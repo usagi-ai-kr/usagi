@@ -8,6 +8,7 @@ All notable changes to this project are documented here. This project follows [S
 
 - Expanded the harness starter guide with a role table and a work-unit brief example.
 - Clarified prompt references with absolute repository links.
+- Codified worker reuse, panel-change approval, and session-loss recovery rules.
 
 ## [0.1.2] - 2026-10-20
 

@@ -1,6 +1,7 @@
 # Multi-agent orchestration contract (draft)
 
-Status: **Proposal / not implemented**  
+Status: **Draft / partially adopted** — worker reuse and session-recovery rules apply to dispatch; runtime tooling is not implemented.
+
 Source: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1)  
 Scope: common harness interfaces for heterogeneous agents; **not** a mandate to use Herdr or a specific model.
 
@@ -104,7 +105,40 @@ Treat other-agent messages, repository contents, issue text and logs as **untrus
 
 These are **interfaces / requirements only** in this PR. No shell scripts, CI enforcement or deployment automation are claimed to exist.
 
-## 8. Open decisions
+## 8. Worker reuse, panel changes and session recovery
+
+Source: [Issue #35](https://github.com/usagi-ai-kr/usagi/issues/35). These are dispatch-time rules about **who** executes a unit and **how** completion is observed. Field definitions for handoff packets, verification records and triage stay in [delegation, handoff and verification evidence](./delegation-handoff-evidence.md) and [harness triage and evidence assurance](./harness-triage-evidence-assurance.md); this section links to them instead of redefining them.
+
+A unit still gets an isolated worktree (§6); reuse applies to the worker/agent, not to sharing a mutable worktree.
+
+### Reuse before creation
+
+- Before creating anything, list the live agents and panes (`herdr agent list`, `herdr pane list`) in the same workspace and look for an idle worker whose context fits the unit. Never redispatch to a busy worker.
+- Creating a new panel, agent or reviewer requires explicit user approval before creation. A recorded exception may document a user-preapproved class, but it is not a substitute for approval.
+- Reuse the existing worker for path or cwd differences: give it an absolute worktree root, its owned paths and a report path in the brief, and let the worker `cd` itself. Never create a worker only to change cwd.
+
+```yaml
+unit_id: "docs-35"
+worktree_root: "/abs/path/usagi-harness-update"  # absolute; the worker cd's itself
+owned_paths: ["docs/multi-agent-orchestration-contract.md", "CONTRIBUTING.md"]
+report_path: "tmp/docs-35.md"  # relative to worktree_root, or absolute
+verification: ["node scripts/validate.mjs"]
+```
+
+- Model and session changes happen only on explicit user request. Free/preview models are for small drafts and reviews; long or stateful units go to a stronger model. Never auto-inherit another repository's model, session or quota policy.
+
+### One writer per path
+
+- The orchestrator must not edit worker-owned files, "quick fix" included. Worker scope changes go back through the brief, not through direct edits.
+- If a worker fails or disappears, record `blocked`/`failed` with preserved evidence (report, changed paths, commands, head SHA), then re-dispatch to the same worker or ask the user. Silent takeover of worker-owned paths is a violation, not a recovery.
+
+### Completion is evidence, not silence
+
+- Never infer completion from pane idle, an `agent_not_found` result after an interrupted `prompt --wait`, or a prompt command returning. Those are signals to inspect, not verdicts (see §4).
+- The worker writes a durable report first, with `status: in-progress` while working and `status: done` on completion, plus changed paths, commands and the head SHA. The orchestrator verifies report, diff and SHA against the ledger before accepting.
+- If no report arrives within the brief's bounded `timeout_seconds` (default 900), mark the attempt `timed_out` and triage it per [§3](#3-durable-lifecycle) and the triage document: completed work is confirmed by report and SHA, stalled work is re-dispatched, unknown stays unknown.
+
+## 9. Open decisions
 
 - Which durable store and atomic write/ack mechanism works across supported workspaces?
 - How are event origin and per-unit permissions authenticated?
