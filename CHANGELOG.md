@@ -7,6 +7,7 @@ All notable changes to this project are documented here. This project follows [S
 ### Added
 
 - Toolchain contract and non-destructive doctor for dependency and OS diagnostics.
+- Architecture responsibility/dependency contract, example map, and static layer-dependency checker.
 
 ## [0.1.3] - 2026-10-20
 

@@ -1,0 +1,25 @@
+{
+  "root": ".",
+  "layers": {
+    "domain": ["src/domain/**"],
+    "app": ["src/app/**"],
+    "ui": ["src/ui/**"],
+    "infra": ["src/infra/**"]
+  },
+  "allowed": {
+    "domain": [],
+    "app": ["domain"],
+    "ui": ["app", "domain"],
+    "infra": ["domain", "app"]
+  },
+  "exceptions": [
+    {
+      "from": "app",
+      "to": "infra",
+      "file": "src/app/legacy/**",
+      "reason": "legacy migration; remove after the port is introduced",
+      "expires": "2026-12-31"
+    }
+  ],
+  "ignore": ["**/*.test.*", "**/*.spec.*", "**/node_modules/**"]
+}
