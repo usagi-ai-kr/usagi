@@ -1,6 +1,9 @@
 ---
 name: glossary
 description: Look up unfamiliar terms in the usagi glossary, or add a new term to the correct category document and regenerate the index. Use when the user asks about terminology in this repository or wants to extend the glossary.
+compatibility: Requires Node.js, git, and a repository checkout. Run commands from the repository root.
+metadata:
+  version: "1.0"
 ---
 
 # Glossary

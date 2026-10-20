@@ -4,7 +4,7 @@
 
 - 저장소 원본: [docs/glossary/](https://github.com/usagi-ai-kr/usagi/tree/main/docs/glossary)
 - 위키 게시본: [Glossary](https://github.com/usagi-ai-kr/usagi/wiki/Glossary)
-- 관련 제안: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1) · [Issue #3](https://github.com/usagi-ai-kr/usagi/issues/3) · [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) · [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5)
+- 사람이 읽는 안내: [하네스 엔지니어링이란?](https://github.com/usagi-ai-kr/usagi/wiki/What-is-Harness-Engineering) · [운영 플로우](https://github.com/usagi-ai-kr/usagi/wiki/Workflows)
 
 ## 카테고리
 

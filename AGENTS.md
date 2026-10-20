@@ -5,7 +5,7 @@
 ## 0. 문서 경계
 
 - `README.md`와 GitHub Wiki는 **사람**이 읽는 문서입니다. 목적은 인지 부하를 낮추고 필요한 문서를 빨리 찾게 하는 것입니다. 운영 규칙·디렉터리 구조·스크립트 목록을 여기에 넣지 않습니다.
-- `AGENTS.md`, `docs/`, `.agents/skills/`는 **에이전트**를 위한 공간입니다. 정확한 경로, 명령, 불변 조건, 금지 사항을 적습니다.
+- `AGENTS.md`, `CONTRIBUTING.md`, `DESIGN.md`, `docs/glossary/`, `.agents/skills/`는 **에이전트**를 위한 공간입니다. 정확한 경로, 명령, 불변 조건, 금지 사항을 적습니다.
 - 사람이 읽는 위키 원본은 `docs/wiki/`에 두고 `scripts/sync-wiki.sh`로만 게시합니다.
 
 ## 1. 먼저 읽을 것
@@ -19,8 +19,10 @@
 
 | 경로 | 역할 | 원본 여부 |
 | --- | --- | --- |
-| `README.md` | 사람용 진입점 | 사람용 |
-| `docs/wiki/` | 위키 Home/Sidebar 원본 | 위키 게시 원본 |
+| `README.md` | 사람용 복붙 프롬프트 | 사람용 |
+| `CONTRIBUTING.md` | 에이전트용 기여 체크리스트 | `AGENTS.md`의 요약 |
+| `DESIGN.md` | 시각 아이덴티티 토큰과 rationale | **원본** |
+| `docs/wiki/` | 위키 페이지 원본 | 위키 게시 원본 |
 | `docs/glossary.md` | 전체 용어 A–Z 인덱스 | **생성물** |
 | `docs/glossary/*.md` | 카테고리별 용어 정의 | **원본** |
 | `docs/glossary/categories.json` | 카테고리 메타데이터 | **원본** |
@@ -64,8 +66,12 @@ gh pr merge <number> --squash --match-head-commit "$(gh pr view <number> --json 
 ```bash
 node scripts/validate.mjs
 node scripts/build-glossary-index.mjs --check
+npx --yes skills-ref@0.1.5 validate .agents/skills/glossary
+npx --yes @google/design.md@0.4.0 lint DESIGN.md
 for script in scripts/*.sh; do bash -n "$script"; done
 ```
+
+스킬은 [Agent Skills specification](https://agentskills.io/specification)을 따릅니다. `SKILL.md`의 `name`은 디렉터리명과 같아야 하고, `name`/`description`은 필수입니다. `DESIGN.md`는 [design.md specification](https://github.com/google-labs-code/design.md)을 따릅니다.
 
 `validate.mjs`가 확인하는 것:
 
@@ -75,6 +81,8 @@ for script in scripts/*.sh; do bash -n "$script"; done
 - 레이블 정의의 MECE
 - 브랜치 보호 설정과 CI check 이름 일치
 - `CLAUDE.md`가 `AGENTS.md` 심볼릭 링크인지
+- `SKILL.md` frontmatter와 Agent Skills 이름 규칙
+- `DESIGN.md` frontmatter 키와 섹션 순서
 
 ## 6. 용어집 작업
 
@@ -107,6 +115,7 @@ for script in scripts/*.sh; do bash -n "$script"; done
 
 ## 7. Wiki 게시
 
+- 사람이 읽는 페이지: Home, What-is-Harness-Engineering, Workflows, Glossary와 카테고리 페이지.
 - 원본: `docs/glossary.md`, `docs/glossary/*.md`, `docs/wiki/*.md`
 - 게시: `./scripts/sync-wiki.sh`
 - 확인: `./scripts/sync-wiki.sh --check`
