@@ -19,7 +19,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, statSync, writeFileSync } from "node:fs";
 import { arch, platform } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 
 const USAGE = `Run one command without a shell and emit the execution evidence envelope.
@@ -28,8 +28,13 @@ Usage:
   node scripts/run-command.mjs --argv-json <json-array> --out-dir <dir> [options]
 
 Options:
-  --argv-json <json>   required; JSON array of non-empty strings, run with shell: false
-  --out-dir <dir>      required; stdout/stderr files are written here
+  --argv-json <json>   JSON array of non-empty strings, run with shell: false
+  --arg <value>        repeatable; one argv element, order preserved (mutually exclusive with --argv-json)
+  --out-dir <dir>      required; default location for stdout/stderr files
+  --stdout-path <file> explicit captured-stdout file (default: <out-dir>/<run_id>.stdout.log)
+  --stderr-path <file> explicit captured-stderr file (default: <out-dir>/<run_id>.stderr.log)
+  --report-path <file> write the report here instead of stdout
+  --env <NAME>         repeatable; pass this parent variable to the child (names only are recorded)
   --cwd <dir>          working directory (default: current directory)
   --timeout-ms <n>     kill the process tree after n ms: integer 1-2147483647 (default: 60000)
   --max-output-bytes <n>  keep at most n bytes per stream, drop the rest (default: 1048576)
@@ -45,13 +50,31 @@ Exit codes:
 `;
 
 const SECRET_NAME_PATTERN = /TOKEN|SECRET|PASSWORD|KEY|CREDENTIAL/i;
+const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+// Small documented base passed to every child. Request more with --env.
+const BASE_ENV_NAMES = ["PATH", "HOME", "LANG", "LC_ALL", "TMPDIR"];
+const WINDOWS_ENV_NAMES = [
+  "SystemRoot",
+  "SystemDrive",
+  "PATHEXT",
+  "COMSPEC",
+  "TEMP",
+  "TMP",
+  "USERPROFILE",
+];
 
 class UsageError extends Error {}
 
 function parseArgs(argv) {
   const options = {
     argvJson: null,
+    args: [],
     outDir: null,
+    stdoutPath: null,
+    stderrPath: null,
+    reportPath: null,
+    envNames: [],
     cwd: process.cwd(),
     timeoutMs: 60000,
     maxOutputBytes: 1048576,
@@ -71,6 +94,31 @@ function parseArgs(argv) {
     switch (arg) {
       case "--argv-json":
         options.argvJson = readValue();
+        break;
+      case "--arg": {
+        const value = readValue();
+        if (value === "") {
+          throw new UsageError("--arg must be a non-empty string");
+        }
+        options.args.push(value);
+        break;
+      }
+      case "--env": {
+        const name = readValue();
+        if (!ENV_NAME_PATTERN.test(name)) {
+          throw new UsageError(`--env must be a valid variable name, got: ${name}`);
+        }
+        options.envNames.push(name);
+        break;
+      }
+      case "--stdout-path":
+        options.stdoutPath = readValue();
+        break;
+      case "--stderr-path":
+        options.stderrPath = readValue();
+        break;
+      case "--report-path":
+        options.reportPath = readValue();
         break;
       case "--out-dir":
         options.outDir = readValue();
@@ -170,6 +218,21 @@ function applyRedactions(text, values) {
   return result;
 }
 
+function buildChildEnv(requestedNames) {
+  // The child never inherits process.env wholesale: only the documented
+  // base names plus explicitly requested ones. A requested name missing
+  // from the parent is left absent; values are never invented.
+  const names = [...BASE_ENV_NAMES];
+  if (platform() === "win32") names.push(...WINDOWS_ENV_NAMES);
+  names.push(...requestedNames);
+  const env = {};
+  for (const name of names) {
+    const value = process.env[name];
+    if (value !== undefined) env[name] = value;
+  }
+  return env;
+}
+
 function killTree(child) {
   if (platform() === "win32") {
     let cleaned = false;
@@ -203,7 +266,7 @@ function killTree(child) {
   }
 }
 
-function runCommand(command, { cwd, timeoutMs, maxOutputBytes }) {
+function runCommand(command, { cwd, timeoutMs, maxOutputBytes, env }) {
   return new Promise((settle) => {
     const startedAt = Date.now();
     let child;
@@ -211,6 +274,7 @@ function runCommand(command, { cwd, timeoutMs, maxOutputBytes }) {
       child = spawn(command[0], command.slice(1), {
         shell: false,
         cwd,
+        env,
         detached: platform() !== "win32",
         stdio: ["ignore", "pipe", "pipe"],
       });
@@ -297,33 +361,39 @@ function usageFailure(json, message, literals = []) {
   return 2;
 }
 
-function emitHuman(envelope, redacted) {
+function humanReport(envelope, redacted) {
+  const lines = [];
   if (envelope.error) {
-    console.log(`run ${envelope.run_id}: runner error: ${envelope.error}`);
+    lines.push(`run ${envelope.run_id}: runner error: ${envelope.error}`);
   } else if (envelope.timed_out) {
-    console.log(
+    lines.push(
       `run ${envelope.run_id}: timed out after ${envelope.duration_ms}ms (exit 124)`,
     );
   } else {
-    console.log(
+    lines.push(
       `run ${envelope.run_id}: exit ${envelope.exit_code} in ${envelope.duration_ms}ms`,
     );
   }
-  console.log(`command: ${envelope.command.join(" ")}`);
+  lines.push(`command: ${envelope.command.join(" ")}`);
   const markTruncated = (truncated) => (truncated ? ", truncated" : "");
   if (envelope.stdout_ref) {
-    console.log(
+    lines.push(
       `stdout: ${envelope.stdout_ref} (${redacted.stdoutBytes} bytes${markTruncated(envelope.stdout_truncated)})`,
     );
   }
   if (envelope.stderr_ref) {
-    console.log(
+    lines.push(
       `stderr: ${envelope.stderr_ref} (${redacted.stderrBytes} bytes${markTruncated(envelope.stderr_truncated)})`,
     );
   }
   if (!redacted.clean) {
-    console.log(`redactions applied: ${envelope.redactions.join(", ")}`);
+    lines.push(`redactions applied: ${envelope.redactions.join(", ")}`);
   }
+  return lines.join("\n");
+}
+
+function emitHuman(envelope, redacted) {
+  console.log(humanReport(envelope, redacted));
 }
 
 async function main(argv) {
@@ -341,18 +411,24 @@ async function main(argv) {
     return 0;
   }
 
-  if (options.argvJson === null) {
-    return usageFailure(jsonMode, "--argv-json is required");
+  if (options.argvJson === null && options.args.length === 0) {
+    return usageFailure(jsonMode, "--argv-json or --arg is required");
   }
   if (options.outDir === null) {
     return usageFailure(jsonMode, "--out-dir is required");
   }
 
   let command;
-  try {
-    command = parseArgv(options.argvJson);
-  } catch (error) {
-    return usageFailure(jsonMode, error.message, options.redact);
+  if (options.argvJson !== null && options.args.length > 0) {
+    return usageFailure(jsonMode, "--argv-json and --arg are mutually exclusive", options.redact);
+  } else if (options.argvJson !== null) {
+    try {
+      command = parseArgv(options.argvJson);
+    } catch (error) {
+      return usageFailure(jsonMode, error.message, options.redact);
+    }
+  } else {
+    command = options.args;
   }
 
   let timeoutMs;
@@ -390,8 +466,18 @@ async function main(argv) {
   }
 
   const runId = randomUUID();
-  const stdoutPath = join(outDir, `${runId}.stdout.log`);
-  const stderrPath = join(outDir, `${runId}.stderr.log`);
+  const rawStdoutPath =
+    options.stdoutPath === null ? join(outDir, `${runId}.stdout.log`) : resolve(options.stdoutPath);
+  const rawStderrPath =
+    options.stderrPath === null ? join(outDir, `${runId}.stderr.log`) : resolve(options.stderrPath);
+  const rawReportPath = options.reportPath === null ? null : resolve(options.reportPath);
+  for (const declared of [rawStdoutPath, rawStderrPath, ...(rawReportPath === null ? [] : [rawReportPath])]) {
+    try {
+      mkdirSync(dirname(declared), { recursive: true });
+    } catch (error) {
+      return usageFailure(jsonMode, `cannot create parent for ${declared}: ${error.message}`, options.redact);
+    }
+  }
   const startedAt = new Date().toISOString();
   const startMs = Date.now();
 
@@ -404,8 +490,15 @@ async function main(argv) {
     ...literalList.map((_, index) => `literal:${index + 1}`),
   ];
   const recordedCommand = command.map((part) => applyRedactions(part, values));
+  const stdoutPath = applyRedactions(rawStdoutPath, values);
+  const stderrPath = applyRedactions(rawStderrPath, values);
+  const reportPath = rawReportPath === null ? null : applyRedactions(rawReportPath, values);
+  // Names explicitly requested, in order and deduplicated. Values are never
+  // recorded; a name missing from the parent is simply absent from the child.
+  const envPassed = [...new Set(options.envNames)];
+  const childEnv = buildChildEnv(options.envNames);
 
-  const outcome = await runCommand(command, { cwd, timeoutMs, maxOutputBytes });
+  const outcome = await runCommand(command, { cwd, timeoutMs, maxOutputBytes, env: childEnv });
 
   const envelope = {
     schema_version: 1,
@@ -417,6 +510,7 @@ async function main(argv) {
       arch: arch(),
       node: process.version,
     },
+    env_passed: envPassed,
     started_at: startedAt,
     duration_ms: 0,
     exit_code: null,
@@ -431,69 +525,75 @@ async function main(argv) {
     redactions: [],
   };
 
+  let runnerExit;
+  let redactedMeta = { stdoutBytes: 0, stderrBytes: 0, clean: values.length === 0 };
+
   if (outcome.spawnError) {
     envelope.duration_ms = Date.now() - startMs;
     envelope.stdout_ref = null;
     envelope.stderr_ref = null;
     envelope.error = applyRedactions(`spawn failed: ${outcome.spawnError.message}`, values);
     envelope.redactions = redactions;
-    if (options.json) {
-      console.log(JSON.stringify(envelope, null, 2));
-    } else {
-      emitHuman(envelope, { stdoutBytes: 0, stderrBytes: 0, clean: values.length === 0 });
-    }
-    return 2;
-  }
-
-  const stdoutText = applyRedactions(outcome.stdout.toString("utf8"), values);
-  const stderrText = applyRedactions(outcome.stderr.toString("utf8"), values);
-
-  try {
-    writeFileSync(stdoutPath, stdoutText);
-    writeFileSync(stderrPath, stderrText);
-  } catch (error) {
-    envelope.duration_ms = Date.now() - startMs;
-    envelope.error = applyRedactions(`cannot write captured output: ${error.message}`, values);
-    envelope.redactions = redactions;
-    if (options.json) {
-      console.log(JSON.stringify(envelope, null, 2));
-    } else {
-      emitHuman(envelope, { stdoutBytes: 0, stderrBytes: 0, clean: values.length === 0 });
-    }
-    return 2;
-  }
-
-  envelope.duration_ms = outcome.finishedAt - outcome.startedAt;
-  envelope.exit_code = outcome.code;
-  envelope.signal = outcome.signal;
-  envelope.timed_out = outcome.timedOut;
-  envelope.stdout_truncated = outcome.stdoutTruncated;
-  envelope.stderr_truncated = outcome.stderrTruncated;
-  envelope.redactions = redactions;
-  // complete only when the exit code is known AND no output was dropped;
-  // truncation means evidence is incomplete even on exit 0.
-  const truncated = envelope.stdout_truncated || envelope.stderr_truncated;
-  if (envelope.timed_out || envelope.exit_code === null || truncated) {
-    envelope.completeness = "partial";
+    runnerExit = 2;
   } else {
-    envelope.completeness = "complete";
+    const stdoutText = applyRedactions(outcome.stdout.toString("utf8"), values);
+    const stderrText = applyRedactions(outcome.stderr.toString("utf8"), values);
+
+    try {
+      writeFileSync(rawStdoutPath, stdoutText);
+      writeFileSync(rawStderrPath, stderrText);
+    } catch (error) {
+      envelope.duration_ms = Date.now() - startMs;
+      envelope.error = applyRedactions(`cannot write captured output: ${error.message}`, values);
+      envelope.redactions = redactions;
+      runnerExit = 2;
+    }
+
+    if (runnerExit === undefined) {
+      envelope.duration_ms = outcome.finishedAt - outcome.startedAt;
+      envelope.exit_code = outcome.code;
+      envelope.signal = outcome.signal;
+      envelope.timed_out = outcome.timedOut;
+      envelope.stdout_truncated = outcome.stdoutTruncated;
+      envelope.stderr_truncated = outcome.stderrTruncated;
+      envelope.redactions = redactions;
+      // complete only when the exit code is known AND no output was dropped;
+      // truncation means evidence is incomplete even on exit 0.
+      const truncated = envelope.stdout_truncated || envelope.stderr_truncated;
+      if (envelope.timed_out || envelope.exit_code === null || truncated) {
+        envelope.completeness = "partial";
+      } else {
+        envelope.completeness = "complete";
+      }
+
+      redactedMeta = {
+        stdoutBytes: Buffer.byteLength(stdoutText),
+        stderrBytes: Buffer.byteLength(stderrText),
+        clean: values.length === 0,
+      };
+
+      if (envelope.timed_out) runnerExit = 124;
+      else if (envelope.exit_code === null || envelope.exit_code !== 0) runnerExit = 1;
+      else runnerExit = 0;
+    }
   }
 
-  const redactedMeta = {
-    stdoutBytes: Buffer.byteLength(stdoutText),
-    stderrBytes: Buffer.byteLength(stderrText),
-    clean: values.length === 0,
-  };
-
-  if (options.json) {
-    console.log(JSON.stringify(envelope, null, 2));
+  const reportText = options.json
+    ? JSON.stringify(envelope, null, 2)
+    : humanReport(envelope, redactedMeta);
+  if (reportPath !== null) {
+    try {
+      writeFileSync(rawReportPath, `${reportText}\n`);
+    } catch (error) {
+      console.error(`error: cannot write report file ${reportPath}: ${error.message}`);
+      return 2;
+    }
+  } else if (options.json) {
+    console.log(reportText);
   } else {
     emitHuman(envelope, redactedMeta);
   }
-
-  if (envelope.timed_out) return 124;
-  if (envelope.exit_code === null || envelope.exit_code !== 0) return 1;
-  return 0;
+  return runnerExit;
 }
 
 process.exit(await main(process.argv.slice(2)));

@@ -12,6 +12,7 @@ Source: [Issue #63](https://github.com/usagi-ai-kr/usagi/issues/63).
   "command": ["node", "-e", "..."],
   "cwd": "/abs/path",
   "env_fingerprint": { "os": "darwin", "arch": "arm64", "node": "v24.x" },
+  "env_passed": ["EXTRA_VAR"],
   "started_at": "ISO",
   "duration_ms": 123,
   "exit_code": 0,
@@ -29,6 +30,7 @@ Source: [Issue #63](https://github.com/usagi-ai-kr/usagi/issues/63).
 
 - `run_id`는 `randomUUID()`로 만든다.
 - `env_fingerprint`는 OS·arch·Node만 기록한다.
+- `env_passed`는 `--env`로 요청한 이름 목록이다. 값은 절대 기록하지 않는다.
 - `artifacts`는 기본 빈 배열이다.
 - `error` 필드는 runner 오류일 때만 있다.
 
@@ -67,11 +69,15 @@ Source: [Issue #63](https://github.com/usagi-ai-kr/usagi/issues/63).
 
 ## 6. 실행 규칙
 
-- shell 없이 인자 배열을 실행한다.
+- shell 없이 인자 배열을 실행한다. `--argv-json` 1회 또는 `--arg` 반복 중 하나만 쓴다. 섞으면 exit 2, 빈 `--arg`도 exit 2다.
+- 자식은 부모 환경을 통째로 물려받지 않는다. 기본(`PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR`, Windows용 SystemRoot·SystemDrive·PATHEXT·COMSPEC·TEMP·TMP·USERPROFILE)에 `--env <이름>`으로 지정한 것만 더한다. 없는 이름은 값을 만들지 않고 비워 둔다. Windows 목록은 미실측이다.
+- 출력은 `--stdout-path`/`--stderr-path`가 `out-dir` 기본값보다 우선한다. 상대 경로는 runner 기동 디렉터리 기준이다. `--report-path`를 주면 보고서(JSON/human)를 파일에 쓰고 stdout은 비운다. 선언된 경로에만 쓰며 쓰기 실패는 exit 2다.
 - 암묵적 설치 없음. 없는 명령은 runner 오류다.
 - `out-dir` 밖에는 쓰지 않는다.
 - 구현은 [run-command.mjs](../scripts/run-command.mjs)를 본다.
 
 ## 7. 후속
 
-- allowlist·입출력은 [#70](https://github.com/usagi-ai-kr/usagi/issues/70) 우선 보완이다.
+## 7. 후속
+
+- Windows 네이티브 실측(allowlist 기본값·taskkill 포함)은 미검증으로 둔다.

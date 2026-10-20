@@ -7,6 +7,7 @@ All notable changes to this project are documented here. This project follows [S
 ### Added
 
 - E2E result validator rejects symlink escapes from the artifact root (realpath containment) and documents the remaining TOCTOU limit.
+- Command runner passes only an explicit environment allowlist to the child, supports repeated `--arg` and separated report/stdout/stderr paths, and records requested env names without values.
 - Claude Code skill discovery through a `.claude/skills` symlink to `.agents/skills`, with validation.
 - Command runner and shared execution evidence envelope with timeout, process cleanup, output capture, truncation, and redaction.
 - Requirement traceability checker for PRD/SRS/ADR IDs, test mapping and ADR references; fenced example IDs are excluded from the scan.
