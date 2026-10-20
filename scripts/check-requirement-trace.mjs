@@ -58,14 +58,16 @@ const PLACEHOLDER_CELLS = new Set([
 const TEMPLATE_REGISTRY_FILE = "document-templates.md";
 // Speculation markers. They are only read in live declaration, mapping and ADR
 // lines plus frontmatter; fenced examples and ordinary prose are not scanned.
+// The Korean markers use boundary rules so ordinary words such as "미정렬"
+// (unsorted) or "추후 결정된 사항" (a decided item) are not flagged.
 const SPECULATION_MARKERS = [
   { marker: "TBD", pattern: /\bTBD\b/i },
   { marker: "TODO", pattern: /\bTODO\b/i },
   { marker: "FIXME", pattern: /\bFIXME\b/i },
-  { marker: "가정:", pattern: /가정:/ },
-  { marker: "추정:", pattern: /추정:/ },
-  { marker: "미정", pattern: /미정/ },
-  { marker: "추후 결정", pattern: /추후 결정/ },
+  { marker: "가정:", pattern: /(?<![가-힣])가정:/ },
+  { marker: "추정:", pattern: /(?<![가-힣])추정:/ },
+  { marker: "미정", pattern: /(?<![가-힣])미정(?!렬|리)/ },
+  { marker: "추후 결정", pattern: /(?<![가-힣])추후 결정(?!된)/ },
   { marker: "확인 필요", pattern: /확인 필요/ },
 ];
 
@@ -204,7 +206,8 @@ function findSpeculationMarker(text) {
 // The registry is a table in <docs>/document-templates.md whose header row has
 // an "ID" column and a "template" column. The first column of each body row
 // is a registered template id. A missing file, a missing table or an empty
-// table all mean "no registry found".
+// table all mean "no registry found". Fenced examples are skipped, and
+// separator rows never register an id.
 function findTemplateRegistry(docsRoot) {
   const path = join(docsRoot, TEMPLATE_REGISTRY_FILE);
   if (!existsSync(path)) return null;
@@ -216,8 +219,17 @@ function findTemplateRegistry(docsRoot) {
   }
   const ids = new Set();
   let inRegistry = false;
-  for (const line of text.split(/\r?\n/)) {
-    const cells = splitRow(line);
+  let fence = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const fenceMatch = FENCE_PATTERN.exec(raw);
+    if (fenceMatch) {
+      const marker = fenceMatch[1];
+      if (fence === null) fence = marker[0];
+      else if (marker[0] === fence) fence = null;
+      continue;
+    }
+    if (fence !== null) continue;
+    const cells = splitRow(raw);
     if (cells === null) {
       inRegistry = false;
       continue;
@@ -228,9 +240,10 @@ function findTemplateRegistry(docsRoot) {
       continue;
     }
     if (!inRegistry) continue;
-    if (cells.every((cell) => /^:?-{2,}:?$/.test(cell))) continue;
+    if (cells.every((cell) => /^:?-+:?$/.test(cell))) continue;
     const id = cells[0].trim();
     if (id === "") continue;
+    if (/^:?-+:?$/.test(id)) continue;
     ids.add(id);
   }
   if (ids.size === 0) return null;
@@ -388,6 +401,7 @@ function analyzeFile(filePath, root) {
     template: frontmatterValue(frontmatter, "template"),
     templateLine: frontmatterLine(frontmatter, "template"),
     adrRecord,
+    adrLine: frontmatterLine(frontmatter, "adr"),
   };
 }
 
@@ -453,7 +467,15 @@ function checkAdrSupersedes(records, declaredAdrs) {
         );
       } else {
         const other = records.get(supersededBy);
-        if (other && !other.supersedes.includes(record.id)) {
+        if (other === undefined) {
+          // The target is declared by file name or heading only, so it cannot
+          // carry the back-link that makes the relation complete.
+          report(
+            "adr_supersede_missing_link",
+            record,
+            `ADR ${supersededBy} has no adr: frontmatter and cannot link back to superseded ADR ${record.id}`,
+          );
+        } else if (!other.supersedes.includes(record.id)) {
           report(
             "adr_supersede_missing_link",
             record,
@@ -472,7 +494,13 @@ function checkAdrSupersedes(records, declaredAdrs) {
         continue;
       }
       const other = records.get(target);
-      if (other && other.supersededBy !== record.id) {
+      if (other === undefined) {
+        report(
+          "adr_supersede_missing_link",
+          record,
+          `ADR ${target} has no adr: frontmatter and cannot link back to ADR ${record.id} that supersedes it`,
+        );
+      } else if (other.supersededBy !== record.id) {
         report(
           "adr_supersede_missing_link",
           record,
@@ -517,7 +545,20 @@ function buildReport(docsRoot, mode, files) {
       declaredAdrs.add(adr);
     }
     if (document.adrRecord !== null) {
-      adrRecords.set(document.adrRecord.id, document.adrRecord);
+      const existing = adrRecords.get(document.adrRecord.id);
+      if (existing === undefined) {
+        adrRecords.set(document.adrRecord.id, document.adrRecord);
+      } else {
+        // Two documents claim the same ADR. Keep the first one and report the
+        // duplicate instead of letting the last one win silently.
+        errors.push({
+          code: "duplicate_adr",
+          id: document.adrRecord.id,
+          file: document.file,
+          line: document.adrLine,
+          message: `ADR ${document.adrRecord.id} is declared in ${existing.file} and ${document.file}; keep one declaration`,
+        });
+      }
     }
     if (document.template !== null) {
       templateDeclarations.push({

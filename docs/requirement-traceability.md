@@ -55,6 +55,7 @@ template: SRS
 - 선언한 ID가 레지스트리에 없으면 `unknown_template` 오류입니다.
 - 레지스트리 파일이 없거나 레지스트리 표가 비어 있으면 `template_registry_unavailable` 경고입니다. 조용히 통과하지도 실패하지도 않습니다.
 - `template:`을 적지 않은 문서는 light 경로에서 그대로 통과합니다.
+- `template:` 키는 대소문자를 구분합니다. `Template:`처럼 쓰면 검사에서 무시됩니다.
 - ID는 대소문자를 구분합니다. `PRD`, `SRS`, `ADR`처럼 대문자로 적습니다.
 
 ## 4. 추측 표시 검사
@@ -65,6 +66,8 @@ template: SRS
 - `가정:`, `추정:`, `미정`, `추후 결정`, `확인 필요`
 
 표시는 살아 있는 요구사항 선언 줄, 매핑 행, ADR 선언 줄, frontmatter에서만 봅니다. 코드펜스 예시와 일반 본문은 보지 않습니다. 발견하면 `speculation_marker` 오류이며 light·full 두 모드에서 같습니다.
+
+한글 표시는 경계를 봅니다. `미정`·`미정이다`·`미정 상태`·`일정은 미정`은 잡고 `미정렬`·`미정리`는 지나갑니다. `추후 결정`은 잡고 `추후 결정된 사항`은 지나갑니다. `재확인 필요`처럼 다시 확인할 일은 보류 표시로 보고 잡습니다.
 
 ## 5. ADR 레지스트리와 대체 관계
 
@@ -91,8 +94,10 @@ supersedes: [ADR-001]
 - `superseded_by`만 있고 `status: superseded`가 없으면 `adr_supersede_inconsistent`입니다.
 - 가리키는 대상 ADR이 없으면 `adr_supersede_missing_link`입니다.
 - 양쪽이 서로를 가리켜야 합니다. 되돌리는 링크가 없으면 `adr_supersede_missing_link`입니다.
+- 가리키는 대상에 `adr:` frontmatter가 없으면 그 대상은 되돌리는 링크를 가질 수 없으므로 `adr_supersede_missing_link`입니다.
 - 자기 자신을 가리키면 `adr_supersede_self`입니다.
 - 대체 사슬이 순환하면 `adr_supersede_cycle`입니다.
+- 두 문서가 같은 `adr:`를 선언하면 `duplicate_adr` 오류입니다. 한 결정에 한 문서를 둡니다.
 
 ## 6. 모드
 
@@ -134,6 +139,7 @@ node scripts/check-requirement-trace.mjs --docs docs --mode full --json
 - 매핑 행 둘째 칸에 적힌 파일이 실제로 있는지 보지 않습니다.
 - 표 머리글을 읽지 않습니다. 둘째 칸을 테스트 칸으로 가정합니다.
 - 표시 목록에 없는 표현은 검사하지 않습니다.
+- frontmatter의 관계 키(`related:` 등)에 적힌 ID는 참조로 세지 않습니다.
 - 대체 관계는 frontmatter에 `adr:`가 있는 문서에서만 읽습니다.
 - 레지스트리 ID가 실제로 그 템플릿 문서를 가리키는지는 보지 않습니다.
 
