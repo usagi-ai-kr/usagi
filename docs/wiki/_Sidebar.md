@@ -4,6 +4,7 @@
 - [하네스 엔지니어링](What-is-Harness-Engineering)
 - [운영 플로우](Workflows)
 - [하네스 시작하기](Harness-Starter)
+- [모델별 운용 기록](Model-Operations)
 - [Glossary](Glossary)
   - [Orchestration](Glossary-Orchestration)
   - [Reliability](Glossary-Reliability)
