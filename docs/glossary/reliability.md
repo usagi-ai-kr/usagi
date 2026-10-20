@@ -40,6 +40,15 @@
 
 참고: [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) §4
 
+<a id="checkpoint"></a>
+## checkpoint
+
+**체크포인트**
+
+부분 게이트를 넘어 저장소 전체 게이트를 한 번에 실행하는 동기화 지점. 병렬 단위가 서로의 검사를 막지 않도록, 통합 시점에 전체 검증을 수행합니다.
+
+참고: [PR #12](https://github.com/usagi-ai-kr/usagi/pull/12) §4
+
 <a id="environment-fingerprint"></a>
 ## environment fingerprint
 
@@ -103,6 +112,15 @@
 
 참고: [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5) §4
 
+<a id="health-check"></a>
+## health check
+
+**상태 판정**
+
+에이전트·패널·작업 단위의 상태를 진단하는 검사. `ok`는 진단된 사고가 없다는 뜻이지 작업이 수락되었다는 뜻은 아닙니다.
+
+참고: [Issue #9](https://github.com/usagi-ai-kr/usagi/issues/9) 운영 노하우, [PR #12](https://github.com/usagi-ai-kr/usagi/pull/12) §1
+
 <a id="idempotency"></a>
 ## idempotency
 
@@ -120,6 +138,15 @@
 작업 단위의 상태·시도·이벤트를 append-only로 기록한 durable 저장소. 채팅 컨텍스트 밖에 둡니다.
 
 참고: [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) §3
+
+<a id="manifest"></a>
+## manifest
+
+**매니페스트**
+
+스냅샷에 포함된 파일 목록과 해시. 누락·추가·변경을 대조해 스냅샷이 전체 변경을 덮는지 확인합니다.
+
+참고: [PR #12](https://github.com/usagi-ai-kr/usagi/pull/12) §3
 
 <a id="orphan"></a>
 ## orphan
@@ -156,6 +183,15 @@
 저장된 이벤트를 다시 처리해 상태를 복구하는 것. 멱등성 덕분에 안전합니다.
 
 참고: [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) §4
+
+<a id="snapshot"></a>
+## snapshot
+
+**스냅샷**
+
+리뷰 전 산출물을 압축해 보관한 것. 작업 트리와 대조해 리뷰 중 변경 여부를 잡지만, 명시된 경로만 포함하면 전체 변경을 보장하지 않습니다.
+
+참고: [Issue #9](https://github.com/usagi-ai-kr/usagi/issues/9) 운영 노하우, [PR #12](https://github.com/usagi-ai-kr/usagi/pull/12) §3
 
 <a id="watchdog"></a>
 ## watchdog
