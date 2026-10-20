@@ -63,7 +63,7 @@ JSON 예시:
   "generated_at": "2026-10-20T00:00:00.000Z",
   "platform": { "os": "darwin", "arch": "arm64", "node": "v24.13.1", "cwd": "/tmp/usagi", "path_has_spaces": false, "path_has_non_ascii": false },
   "tools": [{ "name": "node", "required": true, "status": "ok", "version": "v24.13.1" }],
-  "repo": { "root": "/tmp/usagi", "version": "0.1.3", "agents": true, "changelog": true },
+  "repo": { "root": "/tmp/usagi", "version": "0.2.0", "agents": true, "changelog": true },
   "summary": { "required_missing": 0, "optional_missing": 1, "status": "degraded" },
   "completeness": "partial"
 }
@@ -76,7 +76,7 @@ node: ok (v24.13.1)
 git: ok (git version 2.50.1 (Apple Git-155))
 gh: missing
 platform: darwin/arm64, node v24.13.1, cwd=/tmp/usagi (spaces=false, non_ascii=false)
-repo: root=/tmp/usagi, version=0.1.3, agents=true, changelog=true
+repo: root=/tmp/usagi, version=0.2.0, agents=true, changelog=true
 doctor: degraded (required_missing=0, optional_missing=1: gh)
 ```
 
