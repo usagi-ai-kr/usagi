@@ -7,7 +7,7 @@
 ## 무엇이 있나요
 
 - **[Glossary (용어집)](docs/glossary.md)** — harness, callback, outbox, idempotency, acceptance gate처럼 낯설 수 있는 용어를 5개 카테고리로 나눠 설명합니다.
-- **[Wiki](https://github.com/usagi-ai-kr/usagi/wiki)** — 하네스 엔지니어링이 무엇인지, 운영 플로우가 어떻게 흐르는지 사람이 읽기 쉽게 정리했습니다.
+- **[Wiki](https://github.com/usagi-ai-kr/usagi/wiki)** — 하네스 엔지니어링 개념, 스킬·규칙·테스트·레이어, 모델별 운용 관찰을 사람이 읽기 쉽게 정리했습니다.
 - **[하네스 시작하기](docs/harness-starter/README.md)** — 다른 프로젝트에 적용할 최소 구성과 템플릿.
 - **[참고 문서](PROMPTS.md)** — 작업별로 먼저 읽을 문서를 짧게 안내합니다.
 - **[제안 문서](docs/)** — 하네스 운영 규칙, 위임·증거, 막힌 작업 정리·증거 보증에 대한 제안.

@@ -12,6 +12,9 @@ config="$root/docs/glossary/categories.json"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# Pages removed from docs/wiki. They are pruned from the published wiki too.
+retired_pages=(Workflows.md Harness-Starter.md)
+
 case "$mode" in
   publish|--check) ;;
   *)
@@ -69,6 +72,13 @@ if [ "$mode" = "--check" ]; then
     fi
   done
 
+  for retired in "${retired_pages[@]}"; do
+    if [ -f "$tmp/wiki/$retired" ]; then
+      echo "wiki has retired page: $retired" >&2
+      status=1
+    fi
+  done
+
   if [ "$status" -eq 0 ]; then
     echo "wiki is in sync with docs/"
   fi
@@ -76,6 +86,11 @@ if [ "$mode" = "--check" ]; then
 fi
 
 cp "$tmp/generated"/*.md "$tmp/wiki/"
+
+# Remove retired pages so the deletion is committed and pushed with the sync.
+for retired in "${retired_pages[@]}"; do
+  rm -f "$tmp/wiki/$retired"
+done
 
 cd "$tmp/wiki"
 git add --all
@@ -86,7 +101,7 @@ fi
 
 git -c user.name="${GIT_AUTHOR_NAME:-usagi-bot}" \
     -c user.email="${GIT_AUTHOR_EMAIL:-usagi-bot@users.noreply.github.com}" \
-    commit -m "docs: sync glossary index and categories"
+    commit -m "docs: sync wiki pages"
 
 git pull --rebase origin HEAD >/dev/null 2>&1 || true
 git push origin HEAD

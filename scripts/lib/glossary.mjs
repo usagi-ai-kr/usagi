@@ -220,7 +220,7 @@ export function renderIndex(glossary) {
     "- 위키 게시본: [Glossary](https://github.com/usagi-ai-kr/usagi/wiki/Glossary)",
   );
   lines.push(
-    "- 사람이 읽는 안내: [하네스 엔지니어링이란?](https://github.com/usagi-ai-kr/usagi/wiki/What-is-Harness-Engineering) · [운영 플로우](https://github.com/usagi-ai-kr/usagi/wiki/Workflows)",
+    "- 사람이 읽는 안내: [하네스 엔지니어링이란?](https://github.com/usagi-ai-kr/usagi/wiki/What-is-Harness-Engineering) · [개념](https://github.com/usagi-ai-kr/usagi/wiki/Concepts) · [모델별 운용 기록](https://github.com/usagi-ai-kr/usagi/wiki/Model-Operations)",
   );
   lines.push("");
   lines.push("## 카테고리");
