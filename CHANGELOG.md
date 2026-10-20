@@ -12,6 +12,7 @@ All notable changes to this project are documented here. This project follows [S
 - Command runner and shared execution evidence envelope with timeout, process cleanup, output capture, truncation, and redaction.
 - Requirement traceability checker for PRD/SRS/ADR IDs, test mapping and ADR references; fenced example IDs are excluded from the scan.
 - Traceability checker follow-up: template registry linkage, speculation-marker detection, and ADR superseded-link validation.
+- Mermaid source/artifact static gate with manifest hash checks and SVG warnings.
 
 ### Changed
 
