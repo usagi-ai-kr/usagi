@@ -21,6 +21,7 @@
 - triage·증거 보증 제안: [harness-triage-evidence-assurance.md](docs/harness-triage-evidence-assurance.md)
 - 디자인: [DESIGN.md](DESIGN.md)
 - glossary 스킬: [.agents/skills/glossary/SKILL.md](.agents/skills/glossary/SKILL.md)
+- 실행 환경·의존성: [toolchain-contract.md](docs/toolchain-contract.md)
 - 사람이 읽는 문서: [독자 중심 작성 계약](docs/human-writing-contract.md), [human-doc 스킬](.agents/skills/human-doc/SKILL.md)
 - 규칙 파일 길이 기준·근거: [docs/rule-file-guidelines.md](docs/rule-file-guidelines.md)
 - 다른 프로젝트 적용: [docs/harness-starter/README.md](docs/harness-starter/README.md), [PROMPTS.md](PROMPTS.md)

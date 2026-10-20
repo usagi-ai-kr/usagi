@@ -51,6 +51,8 @@ Wiki는 사람이 읽는 문서이므로 운영 규칙을 추가하지 말고, �
 node scripts/validate.mjs
 node scripts/build-glossary-index.mjs --check
 node --test scripts/check-human-doc.test.mjs
+node scripts/doctor.mjs
+node --test scripts/doctor.test.mjs
 node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 for skill in .agents/skills/*; do npx --yes skills-ref@0.1.5 validate "$skill"; done
 npx --yes @google/design.md@0.4.0 lint DESIGN.md

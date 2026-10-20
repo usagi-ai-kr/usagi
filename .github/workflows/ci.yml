@@ -43,6 +43,9 @@ jobs:
       - name: Test human-doc checker
         run: node --test scripts/check-human-doc.test.mjs
 
+      - name: Test toolchain doctor
+        run: node --test scripts/doctor.test.mjs
+
       - name: Check contract metadata
         run: node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 
