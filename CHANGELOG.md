@@ -4,6 +4,10 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Changed
+
+- Reduced `AGENTS.md` to a concise router and moved detailed rules to `CONTRIBUTING.md`, skills, `DESIGN.md`, and `docs/rule-file-guidelines.md`.
+
 ## [0.1.0] - 2026-10-20
 
 ### Added
