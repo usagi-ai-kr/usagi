@@ -4,6 +4,8 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-20
+
 ### Added
 
 - Reader-focused writing contract, `human-doc` skill, and advisory metadata/length checker for human-facing documents.
