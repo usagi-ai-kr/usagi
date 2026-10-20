@@ -324,3 +324,385 @@ test("scanner skips .git, node_modules and tmp directories", () => {
     ["REQ-F-001"],
   );
 });
+
+// ---------------------------------------------------------------------------
+// #59 follow-up: template linkage, speculation markers, ADR superseded links
+// ---------------------------------------------------------------------------
+
+const REGISTRY_DOC = `# 문서 템플릿
+
+## 템플릿 레지스트리
+
+| ID | template |
+| --- | --- |
+| PRD | PRD 템플릿 |
+| SRS | SRS 템플릿 |
+| ADR | ADR 템플릿 |
+
+## SRS 템플릿
+
+\`\`\`markdown
+- REQ-F-001: <검증 가능한 한 문장>
+
+| 요구사항 | 테스트/증거 |
+| --- | --- |
+| REQ-F-001 | <테스트 이름 또는 수용 증거> |
+\`\`\`
+`;
+
+const TEMPLATE_SRS = `---
+template: SRS
+---
+# SRS
+
+- REQ-F-001: 로그인 실패 시 오류 메시지를 표시한다.
+
+| 요구사항 | 테스트 | 결정 |
+| --- | --- | --- |
+| REQ-F-001 | tests/auth.test.ts | ADR-001 |
+`;
+
+test("a template declared in frontmatter is accepted when the registry lists it", () => {
+  const dir = makeDocs({
+    "document-templates.md": REGISTRY_DOC,
+    "srs.md": TEMPLATE_SRS,
+    "adr/ADR-001.md": ADR_DOC,
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 0);
+  assert.deepEqual(
+    report.errors.filter((error) => error.code.startsWith("template")),
+    [],
+  );
+  assert.ok(
+    !report.warnings.some(
+      (warning) => warning.code === "template_registry_unavailable",
+    ),
+  );
+});
+
+test("an unknown template id is an error", () => {
+  const dir = makeDocs({
+    "document-templates.md": REGISTRY_DOC,
+    "srs.md": "---\ntemplate: NOPE\n---\n# SRS\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  const error = report.errors.find((item) => item.code === "unknown_template");
+  assert.ok(error, "unknown_template must be reported");
+  assert.equal(error.id, "NOPE");
+  assert.equal(error.file, "srs.md");
+});
+
+test("a template declaration without a registry warns instead of failing", () => {
+  const dir = makeDocs({
+    "srs.md": TEMPLATE_SRS,
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 0);
+  const warning = report.warnings.find(
+    (item) => item.code === "template_registry_unavailable",
+  );
+  assert.ok(warning, "template_registry_unavailable must be reported");
+  assert.ok(
+    !report.errors.some((error) => error.code === "unknown_template"),
+  );
+});
+
+test("fenced template examples stay examples", () => {
+  const dir = makeDocs({
+    "document-templates.md": REGISTRY_DOC,
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 0);
+  assert.deepEqual(report.requirements, []);
+});
+
+test("speculation markers in a declaration line are an error", () => {
+  const dir = makeDocs({
+    "srs.md": "- REQ-F-001: 로그인 오류 문구는 TBD\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  const error = report.errors.find(
+    (item) => item.code === "speculation_marker",
+  );
+  assert.ok(error, "speculation_marker must be reported");
+  assert.equal(error.id, "REQ-F-001");
+  assert.equal(error.file, "srs.md");
+  assert.equal(error.line, 1);
+  assert.ok(error.message.includes("TBD"));
+});
+
+test("speculation markers in ordinary prose are not scanned", () => {
+  const dir = makeDocs({
+    "note.md": "# 메모\n\n이 문서에는 TODO 목록이 있습니다. FIXME 도 마찬가지입니다.\n",
+    "srs.md": "- REQ-F-001: 로그인 실패 시 오류 메시지를 표시한다.\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 0);
+  assert.deepEqual(
+    report.errors.filter((error) => error.code === "speculation_marker"),
+    [],
+  );
+});
+
+test("speculation markers inside fenced examples are not scanned", () => {
+  const dir = makeDocs({
+    "srs.md":
+      "# SRS\n\n```markdown\n- REQ-F-001: 오류 문구는 FIXME\n```\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 0);
+  assert.deepEqual(
+    report.errors.filter((error) => error.code === "speculation_marker"),
+    [],
+  );
+});
+
+test("a superseded ADR with a matching back-link passes", () => {
+  const dir = makeDocs({
+    "adr/ADR-002.md":
+      "---\nadr: ADR-002\nstatus: superseded\nsuperseded_by: ADR-003\n---\n# ADR-002: 옛 결정\n",
+    "adr/ADR-003.md":
+      "---\nadr: ADR-003\nsupersedes: [ADR-002]\n---\n# ADR-003: 새 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 0);
+  assert.deepEqual(
+    report.errors.filter((error) => error.code.startsWith("adr_supersede")),
+    [],
+  );
+});
+
+test("status superseded without superseded_by is reported", () => {
+  const dir = makeDocs({
+    "adr/ADR-002.md":
+      "---\nadr: ADR-002\nstatus: superseded\n---\n# ADR-002: 옛 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some(
+      (error) => error.code === "adr_supersede_missing_link",
+    ),
+  );
+});
+
+test("a superseded_by target that does not exist is reported", () => {
+  const dir = makeDocs({
+    "adr/ADR-002.md":
+      "---\nadr: ADR-002\nstatus: superseded\nsuperseded_by: ADR-009\n---\n# ADR-002: 옛 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some(
+      (error) => error.code === "adr_supersede_missing_link",
+    ),
+  );
+});
+
+test("a supersede relation without a back-link is reported", () => {
+  const dir = makeDocs({
+    "adr/ADR-002.md":
+      "---\nadr: ADR-002\nstatus: superseded\nsuperseded_by: ADR-003\n---\n# ADR-002: 옛 결정\n",
+    "adr/ADR-003.md": "---\nadr: ADR-003\n---\n# ADR-003: 새 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some(
+      (error) => error.code === "adr_supersede_missing_link",
+    ),
+  );
+});
+
+test("a supersede cycle is reported", () => {
+  const dir = makeDocs({
+    "adr/ADR-002.md":
+      "---\nadr: ADR-002\nstatus: superseded\nsuperseded_by: ADR-003\nsupersedes: [ADR-003]\n---\n# ADR-002: 옛 결정\n",
+    "adr/ADR-003.md":
+      "---\nadr: ADR-003\nstatus: superseded\nsuperseded_by: ADR-002\nsupersedes: [ADR-002]\n---\n# ADR-003: 새 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  const codes = report.errors.map((error) => error.code);
+  assert.ok(codes.includes("adr_supersede_cycle"), codes.join(","));
+  assert.ok(!codes.includes("adr_supersede_missing_link"), codes.join(","));
+});
+
+test("a self-referencing supersede is reported", () => {
+  const dir = makeDocs({
+    "adr/ADR-002.md":
+      "---\nadr: ADR-002\nstatus: superseded\nsuperseded_by: ADR-002\n---\n# ADR-002: 옛 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some((error) => error.code === "adr_supersede_self"),
+  );
+});
+
+test("superseded_by without status superseded is reported", () => {
+  const dir = makeDocs({
+    "adr/ADR-002.md":
+      "---\nadr: ADR-002\nsuperseded_by: ADR-003\n---\n# ADR-002: 옛 결정\n",
+    "adr/ADR-003.md":
+      "---\nadr: ADR-003\nsupersedes: [ADR-002]\n---\n# ADR-003: 새 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some(
+      (error) => error.code === "adr_supersede_inconsistent",
+    ),
+  );
+});
+
+test("a registry file without a registry table is treated as no registry", () => {
+  const dir = makeDocs({
+    "document-templates.md": "# 문서 템플릿\n\n## PRD 템플릿\n\n```markdown\n# <제품명>\n```\n",
+    "srs.md": TEMPLATE_SRS,
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 0);
+  assert.ok(
+    report.warnings.some(
+      (warning) => warning.code === "template_registry_unavailable",
+    ),
+  );
+  assert.ok(
+    !report.errors.some((error) => error.code === "unknown_template"),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// #59 review rework: marker boundaries, duplicate adr, back-link targets
+// ---------------------------------------------------------------------------
+
+test("the 미정 marker matches pending wording but not ordinary words", () => {
+  const flagged = ["미정", "미정이다", "미정 상태", "일정은 미정"];
+  for (const text of flagged) {
+    const dir = makeDocs({ "srs.md": `- REQ-F-001: ${text}\n` });
+    const { result, report } = runJson(dir);
+    assert.equal(result.status, 1, `${text} must be flagged`);
+    assert.ok(
+      report.errors.some((error) => error.code === "speculation_marker"),
+      `${text} must be reported as a speculation marker`,
+    );
+  }
+  const allowed = ["미정렬 목록도 표시한다.", "미정리 항목", "추후 결정된 사항"];
+  for (const text of allowed) {
+    const dir = makeDocs({ "srs.md": `- REQ-F-001: ${text}\n` });
+    const { result, report } = runJson(dir);
+    assert.equal(result.status, 0, `${text} must not be flagged`);
+    assert.deepEqual(
+      report.errors.filter((error) => error.code === "speculation_marker"),
+      [],
+    );
+  }
+  const pending = makeDocs({ "srs.md": "- REQ-F-001: 재확인 필요합니다\n" });
+  const pendingRun = runJson(pending);
+  assert.equal(pendingRun.result.status, 1, "재확인 필요 is a pending marker");
+  assert.ok(
+    pendingRun.report.errors.some(
+      (error) => error.code === "speculation_marker",
+    ),
+  );
+});
+
+test("a pending 추후 결정 wording is still flagged", () => {
+  const dir = makeDocs({ "srs.md": "- REQ-F-001: 추후 결정이 남았다\n" });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some((error) => error.code === "speculation_marker"),
+  );
+});
+
+test("two documents claiming the same adr are a duplicate_adr error", () => {
+  const dir = makeDocs({
+    "a.md": "---\nadr: ADR-005\n---\n# ADR-005: 첫 결정\n",
+    "b.md": "---\nadr: ADR-005\n---\n# ADR-005: 다른 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  const duplicate = report.errors.find((error) => error.code === "duplicate_adr");
+  assert.ok(duplicate, "duplicate_adr must be reported");
+  assert.equal(duplicate.id, "ADR-005");
+  assert.ok(duplicate.message.includes("a.md") && duplicate.message.includes("b.md"));
+});
+
+test("a superseded_by target without adr frontmatter cannot link back", () => {
+  const dir = makeDocs({
+    "adr/ADR-002.md":
+      "---\nadr: ADR-002\nstatus: superseded\nsuperseded_by: ADR-009\n---\n# ADR-002: 옛 결정\n",
+    "adr/ADR-009-notes.md": "# ADR-009: 파일 이름으로만 선언한 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some(
+      (error) => error.code === "adr_supersede_missing_link",
+    ),
+  );
+});
+
+test("a supersedes target without adr frontmatter cannot link back", () => {
+  const dir = makeDocs({
+    "adr/ADR-002.md":
+      "---\nadr: ADR-002\nsupersedes: [ADR-009]\n---\n# ADR-002: 새 결정\n",
+    "adr/ADR-009-notes.md": "# ADR-009: 파일 이름으로만 선언한 결정\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some(
+      (error) => error.code === "adr_supersede_missing_link",
+    ),
+  );
+});
+
+test("a fenced registry example does not register a template id", () => {
+  const dir = makeDocs({
+    "document-templates.md": `# 문서 템플릿
+
+## 레지스트리
+
+| ID | template |
+| --- | --- |
+| PRD | PRD 템플릿 |
+
+\`\`\`markdown
+| ID | template |
+| --- | --- |
+| FENCED | 코드펜스 안 예시 |
+\`\`\`
+`,
+    "srs.md": "---\ntemplate: FENCED\n---\n# SRS\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some((error) => error.code === "unknown_template"),
+  );
+});
+
+test("a separator cell does not register a template id", () => {
+  const dir = makeDocs({
+    "document-templates.md": `# 문서 템플릿
+
+| ID | template |
+| --- | --- |
+| - | - |
+| PRD | PRD 템플릿 |
+`,
+    "srs.md": "---\ntemplate: -\n---\n# SRS\n",
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 1);
+  assert.ok(
+    report.errors.some((error) => error.code === "unknown_template"),
+  );
+});

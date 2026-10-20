@@ -13,7 +13,7 @@
  *
  * The checker only reads files: it never writes and installs nothing.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import process from "node:process";
 
@@ -54,6 +54,22 @@ const PLACEHOLDER_CELLS = new Set([
   "—",
   "?",
 ]);
+// Template registry file, discovered next to the scanned documents.
+const TEMPLATE_REGISTRY_FILE = "document-templates.md";
+// Speculation markers. They are only read in live declaration, mapping and ADR
+// lines plus frontmatter; fenced examples and ordinary prose are not scanned.
+// The Korean markers use boundary rules so ordinary words such as "미정렬"
+// (unsorted) or "추후 결정된 사항" (a decided item) are not flagged.
+const SPECULATION_MARKERS = [
+  { marker: "TBD", pattern: /\bTBD\b/i },
+  { marker: "TODO", pattern: /\bTODO\b/i },
+  { marker: "FIXME", pattern: /\bFIXME\b/i },
+  { marker: "가정:", pattern: /(?<![가-힣])가정:/ },
+  { marker: "추정:", pattern: /(?<![가-힣])추정:/ },
+  { marker: "미정", pattern: /(?<![가-힣])미정(?!렬|리)/ },
+  { marker: "추후 결정", pattern: /(?<![가-힣])추후 결정(?!된)/ },
+  { marker: "확인 필요", pattern: /확인 필요/ },
+];
 
 class UsageError extends Error {}
 
@@ -130,6 +146,110 @@ function splitRow(line) {
   return inner.split("|").map((cell) => cell.trim());
 }
 
+function stripQuotes(value) {
+  return value.replace(/^["']/, "").replace(/["']$/, "").trim();
+}
+
+function parseFrontmatter(lines) {
+  if (lines.length === 0 || lines[0].trim() !== "---") return null;
+  for (let index = 1; index < lines.length; index += 1) {
+    if (lines[index].trim() !== "---") continue;
+    const data = new Map();
+    for (let cursor = 1; cursor < index; cursor += 1) {
+      const match = /^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/.exec(lines[cursor].trim());
+      if (!match) continue;
+      const raw = match[2].trim();
+      const value = raw.startsWith("[") && raw.endsWith("]")
+        ? raw
+            .slice(1, -1)
+            .split(",")
+            .map((item) => stripQuotes(item))
+            .filter((item) => item !== "")
+        : stripQuotes(raw);
+      data.set(match[1], { value, line: cursor + 1 });
+    }
+    return { data, start: 1, end: index };
+  }
+  return null;
+}
+
+function frontmatterValue(frontmatter, key) {
+  if (frontmatter === null) return null;
+  const entry = frontmatter.data.get(key);
+  if (entry === undefined) return null;
+  return entry.value;
+}
+
+function frontmatterLine(frontmatter, key) {
+  if (frontmatter === null) return null;
+  const entry = frontmatter.data.get(key);
+  return entry === undefined ? null : entry.line;
+}
+
+function frontmatterList(frontmatter, key) {
+  const value = frontmatterValue(frontmatter, key);
+  if (value === null) return [];
+  if (Array.isArray(value)) return value;
+  return String(value)
+    .split(",")
+    .map((item) => stripQuotes(item))
+    .filter((item) => item !== "");
+}
+
+function findSpeculationMarker(text) {
+  for (const { marker, pattern } of SPECULATION_MARKERS) {
+    if (pattern.test(text)) return marker;
+  }
+  return null;
+}
+
+// The registry is a table in <docs>/document-templates.md whose header row has
+// an "ID" column and a "template" column. The first column of each body row
+// is a registered template id. A missing file, a missing table or an empty
+// table all mean "no registry found". Fenced examples are skipped, and
+// separator rows never register an id.
+function findTemplateRegistry(docsRoot) {
+  const path = join(docsRoot, TEMPLATE_REGISTRY_FILE);
+  if (!existsSync(path)) return null;
+  let text;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    return null;
+  }
+  const ids = new Set();
+  let inRegistry = false;
+  let fence = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const fenceMatch = FENCE_PATTERN.exec(raw);
+    if (fenceMatch) {
+      const marker = fenceMatch[1];
+      if (fence === null) fence = marker[0];
+      else if (marker[0] === fence) fence = null;
+      continue;
+    }
+    if (fence !== null) continue;
+    const cells = splitRow(raw);
+    if (cells === null) {
+      inRegistry = false;
+      continue;
+    }
+    const header = cells.map((cell) => cell.toLowerCase());
+    if (header.includes("id") && header.includes("template")) {
+      inRegistry = true;
+      continue;
+    }
+    if (!inRegistry) continue;
+    if (cells.every((cell) => /^:?-+:?$/.test(cell))) continue;
+    const id = cells[0].trim();
+    if (id === "") continue;
+    if (/^:?-+:?$/.test(id)) continue;
+    ids.add(id);
+  }
+  if (ids.size === 0) return null;
+  return { file: TEMPLATE_REGISTRY_FILE, ids };
+}
+
 function stripLineMarkers(line) {
   return line
     .trim()
@@ -162,6 +282,8 @@ function analyzeFile(filePath, root) {
     throw failure;
   }
   const lines = text.split(/\r?\n/);
+  const frontmatter = parseFrontmatter(lines);
+  const bodyStart = frontmatter === null ? 0 : frontmatter.end + 1;
 
   const declarations = new Map();
   const mappings = new Map();
@@ -170,6 +292,10 @@ function analyzeFile(filePath, root) {
   const adrDeclarations = new Set();
   const lineAdrs = new Map();
   const lineIds = new Map();
+  const markerHits = [];
+
+  const adrId = frontmatterValue(frontmatter, "adr");
+  if (adrId !== null) adrDeclarations.add(adrId);
 
   const addTo = (map, key, value) => {
     if (!map.has(key)) map.set(key, []);
@@ -180,6 +306,7 @@ function analyzeFile(filePath, root) {
   // skipped entirely. The fence marker lines are skipped as well.
   let fence = null;
   lines.forEach((raw, index) => {
+    if (index < bodyStart) return;
     const fenceMatch = FENCE_PATTERN.exec(raw);
     if (fenceMatch) {
       const marker = fenceMatch[1];
@@ -213,6 +340,20 @@ function analyzeFile(filePath, root) {
 
     if (ids.length > 0) lineIds.set(line, ids);
 
+    // Speculation markers are only read where a live requirement, mapping row
+    // or ADR declaration lives. Ordinary prose is not scanned.
+    const scopeId = mapping
+      ? mapping.ids[0]
+      : leadingRequirement
+        ? leadingRequirement[0]
+        : leadingAdr
+          ? leadingAdr[0]
+          : null;
+    if (scopeId !== null) {
+      const marker = findSpeculationMarker(raw);
+      if (marker !== null) markerHits.push({ marker, file, line, id: scopeId });
+    }
+
     for (const id of ids) {
       if (mapping && mapping.ids.includes(id)) {
         addTo(mappings, id, { file, line, evidence: mapping.evidence });
@@ -226,6 +367,27 @@ function analyzeFile(filePath, root) {
     }
   });
 
+  // Frontmatter is live text too, so speculation markers there are reported.
+  if (frontmatter !== null) {
+    for (let index = frontmatter.start; index < frontmatter.end; index += 1) {
+      const marker = findSpeculationMarker(lines[index]);
+      if (marker !== null) {
+        markerHits.push({ marker, file, line: index + 1, id: adrId });
+      }
+    }
+  }
+
+  const adrRecord =
+    adrId === null
+      ? null
+      : {
+          id: adrId,
+          file,
+          status: frontmatterValue(frontmatter, "status"),
+          supersededBy: frontmatterValue(frontmatter, "superseded_by"),
+          supersedes: frontmatterList(frontmatter, "supersedes"),
+        };
+
   return {
     file,
     declarations,
@@ -235,7 +397,127 @@ function analyzeFile(filePath, root) {
     adrDeclarations,
     lineAdrs,
     lineIds,
+    markerHits,
+    template: frontmatterValue(frontmatter, "template"),
+    templateLine: frontmatterLine(frontmatter, "template"),
+    adrRecord,
+    adrLine: frontmatterLine(frontmatter, "adr"),
   };
+}
+
+function detectSupersedeCycle(startId, records) {
+  const seen = new Set([startId]);
+  let current = records.get(startId)?.supersededBy ?? null;
+  while (current !== null) {
+    if (seen.has(current)) return true;
+    seen.add(current);
+    current = records.get(current)?.supersededBy ?? null;
+  }
+  return false;
+}
+
+// ADR supersede grammar (frontmatter of the ADR document):
+//   adr: ADR-002
+//   status: superseded
+//   superseded_by: ADR-003
+//   supersedes: [ADR-001]
+function checkAdrSupersedes(records, declaredAdrs) {
+  const errors = [];
+  const report = (code, record, message) =>
+    errors.push({
+      code,
+      id: record.id,
+      file: record.file,
+      line: null,
+      message,
+    });
+
+  for (const record of records.values()) {
+    const supersededBy = record.supersededBy;
+    const supersedes = record.supersedes;
+
+    if (supersededBy === record.id || supersedes.includes(record.id)) {
+      report(
+        "adr_supersede_self",
+        record,
+        `ADR ${record.id} supersedes itself`,
+      );
+      continue;
+    }
+    if (record.status === "superseded" && !supersededBy) {
+      report(
+        "adr_supersede_missing_link",
+        record,
+        `ADR ${record.id} is superseded but has no superseded_by target`,
+      );
+    }
+    if (supersededBy && record.status !== "superseded") {
+      report(
+        "adr_supersede_inconsistent",
+        record,
+        `ADR ${record.id} has superseded_by but no status: superseded`,
+      );
+    }
+    if (supersededBy) {
+      if (!declaredAdrs.has(supersededBy)) {
+        report(
+          "adr_supersede_missing_link",
+          record,
+          `ADR ${record.id} is superseded by unknown ADR ${supersededBy}`,
+        );
+      } else {
+        const other = records.get(supersededBy);
+        if (other === undefined) {
+          // The target is declared by file name or heading only, so it cannot
+          // carry the back-link that makes the relation complete.
+          report(
+            "adr_supersede_missing_link",
+            record,
+            `ADR ${supersededBy} has no adr: frontmatter and cannot link back to superseded ADR ${record.id}`,
+          );
+        } else if (!other.supersedes.includes(record.id)) {
+          report(
+            "adr_supersede_missing_link",
+            record,
+            `ADR ${supersededBy} does not link back to superseded ADR ${record.id}`,
+          );
+        }
+      }
+    }
+    for (const target of supersedes) {
+      if (!declaredAdrs.has(target)) {
+        report(
+          "adr_supersede_missing_link",
+          record,
+          `ADR ${record.id} supersedes unknown ADR ${target}`,
+        );
+        continue;
+      }
+      const other = records.get(target);
+      if (other === undefined) {
+        report(
+          "adr_supersede_missing_link",
+          record,
+          `ADR ${target} has no adr: frontmatter and cannot link back to ADR ${record.id} that supersedes it`,
+        );
+      } else if (other.supersededBy !== record.id) {
+        report(
+          "adr_supersede_missing_link",
+          record,
+          `ADR ${target} does not link back to ADR ${record.id} that supersedes it`,
+        );
+      }
+    }
+    if (supersededBy && detectSupersedeCycle(record.id, records)) {
+      report(
+        "adr_supersede_cycle",
+        record,
+        `ADR ${record.id} is part of a supersede cycle`,
+      );
+    }
+  }
+
+  return errors;
 }
 
 function buildReport(docsRoot, mode, files) {
@@ -244,6 +526,9 @@ function buildReport(docsRoot, mode, files) {
   const documents = [];
   const declaredAdrs = new Set();
   const adrOccurrences = new Map();
+  const adrRecords = new Map();
+  const templateDeclarations = [];
+  const markerHits = [];
 
   for (const filePath of files) {
     const name = filePath.split("/").pop();
@@ -253,6 +538,38 @@ function buildReport(docsRoot, mode, files) {
 
   for (const filePath of files) {
     documents.push(analyzeFile(filePath, docsRoot));
+  }
+
+  for (const document of documents) {
+    for (const adr of document.adrDeclarations) {
+      declaredAdrs.add(adr);
+    }
+    if (document.adrRecord !== null) {
+      const existing = adrRecords.get(document.adrRecord.id);
+      if (existing === undefined) {
+        adrRecords.set(document.adrRecord.id, document.adrRecord);
+      } else {
+        // Two documents claim the same ADR. Keep the first one and report the
+        // duplicate instead of letting the last one win silently.
+        errors.push({
+          code: "duplicate_adr",
+          id: document.adrRecord.id,
+          file: document.file,
+          line: document.adrLine,
+          message: `ADR ${document.adrRecord.id} is declared in ${existing.file} and ${document.file}; keep one declaration`,
+        });
+      }
+    }
+    if (document.template !== null) {
+      templateDeclarations.push({
+        template: document.template,
+        file: document.file,
+        line: document.templateLine,
+      });
+    }
+    for (const hit of document.markerHits) {
+      markerHits.push(hit);
+    }
   }
 
   const declarationCounts = new Map();
@@ -356,6 +673,46 @@ function buildReport(docsRoot, mode, files) {
     else warnings.push(payload);
   }
 
+  // Template linkage. A declaration must name a registered template id; when
+  // no registry file is found the declaration is a warning, not a silent pass.
+  const registry = findTemplateRegistry(docsRoot);
+  for (const declaration of templateDeclarations) {
+    if (registry === null) {
+      warnings.push({
+        code: "template_registry_unavailable",
+        id: declaration.template,
+        file: declaration.file,
+        line: declaration.line,
+        message: `template ${declaration.template} is declared but no ${TEMPLATE_REGISTRY_FILE} registry was found`,
+      });
+      continue;
+    }
+    if (!registry.ids.has(declaration.template)) {
+      errors.push({
+        code: "unknown_template",
+        id: declaration.template,
+        file: declaration.file,
+        line: declaration.line,
+        message: `template ${declaration.template} is not registered in ${registry.file}`,
+      });
+    }
+  }
+
+  // Speculation markers in live requirement, mapping and ADR lines. They are
+  // errors in both modes: a placeholder requirement cannot be traced.
+  for (const hit of markerHits) {
+    errors.push({
+      code: "speculation_marker",
+      id: hit.id,
+      file: hit.file,
+      line: hit.line,
+      message: `speculation marker "${hit.marker}" is not allowed in a live requirement line`,
+    });
+  }
+
+  // ADR supersede links.
+  errors.push(...checkAdrSupersedes(adrRecords, declaredAdrs));
+
   const requirements = requirementIds.map((id) => {
     const adrRefs = [...(adrByRequirement.get(id) ?? new Set())].sort();
     return {
@@ -404,6 +761,9 @@ function buildReport(docsRoot, mode, files) {
   const declaredCount = requirements.filter((item) => item.declared).length;
   const mappedCount = requirements.filter((item) => item.mapped).length;
   const withAdrCount = requirements.filter((item) => item.adr_refs.length > 0).length;
+  const supersedeCount = [...adrRecords.values()].filter(
+    (record) => record.supersededBy !== null || record.supersedes.length > 0,
+  ).length;
 
   return {
     schema_version: 1,
@@ -417,6 +777,9 @@ function buildReport(docsRoot, mode, files) {
       requirements: declaredCount,
       mapped: mappedCount,
       with_adr: withAdrCount,
+      templates_checked: templateDeclarations.length,
+      speculation_markers: markerHits.length,
+      adr_supersedes: supersedeCount,
       errors: errors.length,
       warnings: warnings.length,
       status: errors.length === 0 ? "ok" : "errors",
