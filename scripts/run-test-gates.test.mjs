@@ -283,9 +283,39 @@ test("output beyond the 1 MiB cap is flagged as truncated", () => {
   ]);
   const { result, report } = runJson(["--config", config, "--json"]);
   assert.equal(result.status, 0);
+  // The captured size must be the cap itself, not a chunk-boundary dependent
+  // value: the cap is reached even when the output arrives in uneven chunks.
   assert.equal(report.gates[0].stdout_truncated, true);
   assert.equal(report.gates[0].stdout_bytes, 1048576);
   assert.equal(report.gates[0].stderr_truncated, false);
+});
+
+test("stderr beyond the 1 MiB cap is truncated the same way", () => {
+  const dir = makeTemp("gates-truncated-stderr-");
+  const config = writeConfig(dir, [
+    gate({
+      command: [
+        "node",
+        "-e",
+        "process.stderr.write('y'.repeat(1200000));process.stdout.write('done')",
+      ],
+    }),
+  ]);
+  const { result, report } = runJson(["--config", config, "--json"]);
+  assert.equal(result.status, 0);
+  assert.equal(report.gates[0].stderr_truncated, true);
+  assert.equal(report.gates[0].stderr_bytes, 1048576);
+  assert.equal(report.gates[0].stdout_truncated, false);
+});
+
+test("a small output is not truncated", () => {
+  const dir = makeTemp("gates-not-truncated-");
+  const config = writeConfig(dir, [gate({ command: ["node", "-e", "console.log('small')"] })]);
+  const { result, report } = runJson(["--config", config, "--json"]);
+  assert.equal(result.status, 0);
+  assert.equal(report.gates[0].stdout_truncated, false);
+  assert.equal(report.gates[0].stderr_truncated, false);
+  assert.ok(report.gates[0].stdout_bytes > 0);
 });
 
 test("a gate that runs too long is reported as timeout", () => {

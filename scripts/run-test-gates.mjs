@@ -255,21 +255,26 @@ function runGate(command, { cwd, timeoutMs }) {
     }, timeoutMs);
     timer.unref?.();
 
+    // Capture up to the cap and keep draining after it. A chunk that crosses
+    // the cap is written partially, so the captured size does not depend on
+    // the stream chunk boundaries.
     child.stdout.on("data", (chunk) => {
-      if (stdoutSize + chunk.length <= MAX_OUTPUT_BYTES) {
-        stdoutChunks.push(chunk);
-        stdoutSize += chunk.length;
-      } else {
-        stdoutTruncated = true;
+      const remaining = MAX_OUTPUT_BYTES - stdoutSize;
+      if (remaining > 0) {
+        const slice = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
+        stdoutChunks.push(slice);
+        stdoutSize += slice.length;
       }
+      if (chunk.length > remaining) stdoutTruncated = true;
     });
     child.stderr.on("data", (chunk) => {
-      if (stderrSize + chunk.length <= MAX_OUTPUT_BYTES) {
-        stderrChunks.push(chunk);
-        stderrSize += chunk.length;
-      } else {
-        stderrTruncated = true;
+      const remaining = MAX_OUTPUT_BYTES - stderrSize;
+      if (remaining > 0) {
+        const slice = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
+        stderrChunks.push(slice);
+        stderrSize += slice.length;
       }
+      if (chunk.length > remaining) stderrTruncated = true;
     });
 
     child.on("error", (error) => {
