@@ -58,6 +58,9 @@ jobs:
       - name: Test requirement traceability
         run: node --test scripts/check-requirement-trace.test.mjs
 
+      - name: Test diagram checker
+        run: node --test scripts/check-diagrams.test.mjs
+
       - name: Check contract metadata
         run: node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 
