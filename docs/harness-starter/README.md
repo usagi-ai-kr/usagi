@@ -24,6 +24,25 @@
 | `docs/` | 에이전트용 지식·제안 문서 | [`docs/`](https://github.com/usagi-ai-kr/usagi/tree/main/docs) |
 | `.agents/skills/` | 재사용 가능한 절차 | [`glossary` skill](https://github.com/usagi-ai-kr/usagi/blob/main/.agents/skills/glossary/SKILL.md) |
 
+## 역할
+
+| 역할 | 책임 | 하지 않는 것 |
+| --- | --- | --- |
+| 오케스트레이터 | 계획, 작업 분배, 수락 판정, CI·병합 조율 | 직접 구현, 워커 파일 수정 |
+| 구현 워커 | 소유 파일 구현, 검증, 증거 보고 | 소유 밖 파일 수정, 임의 병합 |
+| 리뷰어 | 독립 리뷰, 차단 사항과 판정 | 구현 수정, 판정 없는 통과 |
+
+## 작업 단위 예시
+
+```yaml
+goal: "로그인 실패 시 오류 메시지를 표시한다"
+done_when: "실패 케이스 테스트가 통과하고 UI에 메시지가 보인다"
+owned_paths: ["src/auth/", "tests/auth/"]
+forbidden: ["결제 모듈 수정", "새 의존성 추가"]
+verify: ["npm test -- auth", "npm run lint"]
+report: "reports/auth-error.md"
+```
+
 ## 적용 순서
 
 1. **사람용 문서와 에이전트용 문서를 나눕니다.** README/Wiki와 AGENTS/docs의 역할을 구분합니다.

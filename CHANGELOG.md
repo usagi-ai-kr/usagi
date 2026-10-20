@@ -4,6 +4,10 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Changed
+
+- Expanded the harness starter guide with a role table and a work-unit brief example.
+
 ## [0.1.2] - 2026-10-20
 
 ### Added
