@@ -69,7 +69,8 @@ for script in scripts/*.sh; do bash -n "$script"; done
 ## 4. PR
 
 - base는 `main`, 제목은 `docs:`, `feat:`, `fix:`, `chore:` 중 하나로 시작합니다.
-- 본문에 `Summary`, `Scope`, `Validation`, `Related issue`를 넣습니다.
+- 본문에 `Summary`, `Scope`, `Validation`, `Related issue`를 넣습니다. 연결 이슈가 없으면 `Related issue`에 `None`이라고 적습니다.
+- PR이 완료하는 이슈는 `Closes #N`, 일부만 기여하는 이슈는 `Refs #N`으로 연결합니다.
 - 레이블을 `type:*` 1개 + `status:*` 1개 붙입니다.
 - 리뷰 대화를 모두 resolve합니다.
 - 최신 `main`과 동기화한 뒤 squash merge합니다.

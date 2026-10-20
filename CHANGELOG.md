@@ -12,6 +12,7 @@ All notable changes to this project are documented here. This project follows [S
 
 ### Changed
 
+- PR bodies close completed issues with `Closes #N` and keep a `Related issue` section even when there is none.
 - Skill descriptions now include `Use when ...` triggers for client auto-invocation, enforced by validation.
 - Updated the README version summary and toolchain example for v0.2.0.
 
