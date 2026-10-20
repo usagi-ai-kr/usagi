@@ -414,16 +414,18 @@ test("large output is truncated at the cap and reported partial", () => {
 });
 
 test("infinite output drains without hanging the runner", () => {
+  // One 64 KiB write already exceeds the small cap, so truncation does not
+  // depend on how much the child manages to emit before the timeout fires.
   const outDir = makeOutDir();
   const result = run([
     "--argv-json",
-    argvOf(process.execPath, "-e", "while(true){console.log('0123456789ABCDEF')}"),
+    argvOf(process.execPath, "-e", "while(true){process.stdout.write('x'.repeat(65536))}"),
     "--out-dir",
     outDir,
     "--max-output-bytes",
-    "65536",
+    "4096",
     "--timeout-ms",
-    "500",
+    "1000",
     "--json",
   ]);
   assert.equal(result.status, 124);
@@ -431,7 +433,7 @@ test("infinite output drains without hanging the runner", () => {
   assert.equal(envelope.timed_out, true);
   assert.equal(envelope.stdout_truncated, true);
   assert.equal(envelope.completeness, "partial");
-  assert.ok(statSync(envelope.stdout_ref).size <= 65536);
+  assert.ok(statSync(envelope.stdout_ref).size <= 4096);
 });
 
 test("signal termination without timeout reports partial completeness", () => {
