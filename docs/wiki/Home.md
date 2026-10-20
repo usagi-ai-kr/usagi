@@ -16,6 +16,7 @@
 - [Issue #1 — Herdr 멀티 에이전트 하네스](https://github.com/usagi-ai-kr/usagi/issues/1)
 - [Issue #3 — 위탁 중심 운영 회고와 이식 제안](https://github.com/usagi-ai-kr/usagi/issues/3)
 - [PR #2 — Multi-agent orchestration contract](https://github.com/usagi-ai-kr/usagi/pull/2)
+- [PR #5 — Delegation, handoff and verification evidence](https://github.com/usagi-ai-kr/usagi/pull/5)
 
 ## 저장소
 

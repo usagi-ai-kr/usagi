@@ -130,6 +130,15 @@ PR의 여러 커밋을 하나로 합쳐 `main`에 병합하는 방식. 이 저�
 
 참고: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1) 주의 6
 
+<a id="staged-tree"></a>
+## staged tree
+
+**스테이징 트리**
+
+`git write-tree`가 만든 트리 해시. 커밋될 내용을 나타내며, 검증과 커밋이 같은 내용을 가리키는지 확인하는 기준입니다.
+
+참고: [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5) §4
+
 <a id="worktree"></a>
 ## worktree
 

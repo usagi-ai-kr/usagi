@@ -40,6 +40,15 @@
 
 참고: [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) §4
 
+<a id="environment-fingerprint"></a>
+## environment fingerprint
+
+**환경 지문**
+
+툴체인·lockfile·서비스/설정 버전 등 검증 환경을 식별하는 정보. 환경이 바뀌면 통합 테스트를 다시 실행해야 합니다.
+
+참고: [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5) §4
+
 <a id="event-envelope"></a>
 ## event envelope
 
@@ -48,6 +57,15 @@
 콜백 이벤트의 공통 메타데이터. `schema_version`·`event_id`·`run_id`·`unit_id`·`attempt_id`·`status` 등을 담습니다.
 
 참고: [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) §3
+
+<a id="evidence-provenance"></a>
+## evidence provenance
+
+**증거 출처**
+
+검증 증거가 어느 source/staged/committed SHA와 환경에서 나왔는지 기록한 것. 커밋·리베이스·의존성 변경 시 증거를 무효화합니다.
+
+참고: [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5) §4
 
 <a id="failure-injection"></a>
 ## failure injection
@@ -75,6 +93,15 @@
 다음 단계로 넘어가기 전에 통과해야 하는 검사. 수락 게이트·CI 게이트 등이 있습니다.
 
 참고: [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) §5
+
+<a id="gate-sequence"></a>
+## gate sequence
+
+**게이트 순서**
+
+변경 목록 확인 → 스테이징 검사 → 검증 → 커밋 → CI/리뷰 → 병합 순서. 순서를 건너뛰면 검증한 내용과 병합 내용이 달라질 수 있습니다.
+
+참고: [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5) §4
 
 <a id="idempotency"></a>
 ## idempotency

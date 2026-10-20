@@ -11,6 +11,7 @@
 ## 1. 먼저 읽을 것
 
 - 공통 계약 제안: [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2). 병합 전에는 main에 계약 문서가 없습니다.
+- 위임·증거 제안: [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5).
 - 하네스 운용 기록: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1), [Issue #3](https://github.com/usagi-ai-kr/usagi/issues/3).
 - 용어: `docs/glossary.md` 인덱스 → `docs/glossary/<category>.md` 정의.
 
