@@ -277,3 +277,138 @@ test("--help exits 0 and documents the flags", () => {
     assert.ok(run.stdout.includes(flag), `help must document ${flag}`);
   }
 });
+
+test("apostrophe labels are plain text, not string delimiters", () => {
+  const dir = writeDocs({ "doc.md": mermaidDoc(["flowchart TD", "  A[Bob's node]-->B"]) });
+  const run = runChecker(["--docs", dir]);
+  assert.equal(run.status, 0);
+  assert.match(run.stdout, /diagram-gate: valid/);
+});
+
+test("inline %% comments are skipped to end of line", () => {
+  const dir = writeDocs({ "doc.md": mermaidDoc(["flowchart TD", "  A-->B %% note with ] bracket"]) });
+  const run = runChecker(["--docs", dir]);
+  assert.equal(run.status, 0);
+  assert.match(run.stdout, /diagram-gate: valid/);
+});
+
+test("currently supported diagram types all pass", () => {
+  const bodies = [
+    ["requirementDiagram", "  requirement test_req {", "    id: 1", "  }"],
+    ["block-beta", "  columns 2", "  A B"],
+    ["architecture-beta", "  group g"],
+    ["packet-beta", "  0-7: x"],
+    ["sankey-beta", "  A,B,1"],
+    ["radar-beta", "  axis a"],
+    ["treemap-beta", '  "a"'],
+    ["kanban", "  Todo", "    t"],
+    ["zenuml", "  A->B: hi"],
+  ];
+  const parts = ["# Doc", ""];
+  for (const body of bodies) {
+    parts.push("```mermaid", ...body, "```", "");
+  }
+  const dir = writeDocs({ "doc.md": parts.join("\n") });
+  const run = runChecker(["--docs", dir, "--json"]);
+  assert.equal(run.status, 0);
+  const report = JSON.parse(run.stdout);
+  assert.equal(report.summary.blocks, bodies.length);
+});
+
+test("1-3 space indented fences are scanned", () => {
+  const lines = ["# Doc", ""];
+  for (const spaces of [" ", "  ", "   "]) {
+    lines.push(`${spaces}\`\`\`mermaid`, `${spaces}flowchart TD`, `${spaces}  A-->B`, `${spaces}\`\`\``, "");
+  }
+  const dir = writeDocs({ "doc.md": lines.join("\n") });
+  const run = runChecker(["--docs", dir, "--json"]);
+  assert.equal(run.status, 0);
+  const report = JSON.parse(run.stdout);
+  assert.equal(report.summary.blocks, 3);
+});
+
+test("blockquote fences are scanned", () => {
+  const dir = writeDocs({ "doc.md": ["# Doc", "", "> ```mermaid", "> flowchart TD", ">   A-->B", "> ```", ""].join("\n") });
+  const run = runChecker(["--docs", dir, "--json"]);
+  assert.equal(run.status, 0);
+  const report = JSON.parse(run.stdout);
+  assert.equal(report.summary.blocks, 1);
+  assert.equal(report.blocks[0].type, "flowchart");
+});
+
+test("extra info-string tokens still select mermaid", () => {
+  const dir = writeDocs({ "doc.md": ["# Doc", "", "```mermaid title=demo", ...FLOW, "```", ""].join("\n") });
+  const run = runChecker(["--docs", dir, "--json"]);
+  assert.equal(run.status, 0);
+  const report = JSON.parse(run.stdout);
+  assert.equal(report.summary.blocks, 1);
+});
+
+test("4-space indented fences are code, not scanned", () => {
+  const dir = writeDocs({ "doc.md": ["# Doc", "", "    ```mermaid", "    flowchart TD", "    ```", ""].join("\n") });
+  const run = runChecker(["--docs", dir, "--json"]);
+  assert.equal(run.status, 0);
+  assert.equal(JSON.parse(run.stdout).summary.blocks, 0);
+});
+
+test("absolute manifest artifact paths are rejected", () => {
+  const dir = writeDocs({ "doc.md": mermaidDoc(FLOW) });
+  const abs = join(dir, "a.svg");
+  writeFileSync(abs, "<svg></svg>");
+  manifestFile(dir, [
+    manifestEntry({ source: "doc.md", block: 1, body: FLOW, artifact: abs, artifactBytes: "<svg></svg>" }),
+  ]);
+  const run = runChecker(["--docs", dir, "--artifact-root", dir]);
+  assert.equal(run.status, 1);
+  assert.match(run.stdout, /error absolute_artifact_path/);
+});
+
+test("duplicate manifest entries are an explicit error", () => {
+  const dir = writeDocs({ "doc.md": mermaidDoc(FLOW) });
+  const svg = "<svg></svg>";
+  writeFileSync(join(dir, "a.svg"), svg);
+  writeFileSync(join(dir, "b.svg"), svg);
+  const base = { source: "doc.md", block: 1, body: FLOW, artifactBytes: svg };
+  manifestFile(dir, [
+    manifestEntry({ ...base, artifact: "a.svg" }),
+    { ...manifestEntry({ ...base, artifact: "b.svg" }) },
+  ]);
+  const run = runChecker(["--docs", dir, "--artifact-root", dir]);
+  assert.equal(run.status, 1);
+  assert.match(run.stdout, /error duplicate_manifest_entry/);
+  assert.doesNotMatch(run.stdout, /error artifact_orphan/);
+});
+
+test("xmlns namespace URIs do not warn", () => {
+  const dir = writeDocs({ "doc.md": mermaidDoc(FLOW) });
+  const svg = '<svg xmlns="http://satori.github.io/svg">\n</svg>\n';
+  writeFileSync(join(dir, "a.svg"), svg);
+  manifestFile(dir, [
+    manifestEntry({ source: "doc.md", block: 1, body: FLOW, artifact: "a.svg", artifactBytes: svg }),
+  ]);
+  const run = runChecker(["--docs", dir, "--artifact-root", dir]);
+  assert.equal(run.status, 0);
+  assert.doesNotMatch(run.stdout, /^warning /m);
+});
+
+test("summary manifest_status distinguishes verified, unavailable and errors", () => {
+  const plain = writeDocs({ "doc.md": mermaidDoc(FLOW) });
+  const unavailable = JSON.parse(runChecker(["--docs", plain, "--json"]).stdout);
+  assert.equal(unavailable.summary.manifest_status, "unavailable");
+
+  const goodDir = writeDocs({ "doc.md": mermaidDoc(FLOW) });
+  const svg = "<svg></svg>";
+  writeFileSync(join(goodDir, "a.svg"), svg);
+  manifestFile(goodDir, [
+    manifestEntry({ source: "doc.md", block: 1, body: FLOW, artifact: "a.svg", artifactBytes: svg }),
+  ]);
+  const verified = JSON.parse(runChecker(["--docs", goodDir, "--artifact-root", goodDir, "--json"]).stdout);
+  assert.equal(verified.summary.manifest_status, "verified");
+
+  const badDir = writeDocs({ "doc.md": mermaidDoc(FLOW) });
+  manifestFile(badDir, [
+    manifestEntry({ source: "doc.md", block: 1, body: FLOW, artifact: "gone.svg", artifactBytes: svg }),
+  ]);
+  const errored = JSON.parse(runChecker(["--docs", badDir, "--artifact-root", badDir, "--json"]).stdout);
+  assert.equal(errored.summary.manifest_status, "errors");
+});

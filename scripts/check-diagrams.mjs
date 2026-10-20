@@ -15,7 +15,7 @@
  */
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import { join, relative, resolve, sep, isAbsolute } from "node:path";
 import process from "node:process";
 
 const USAGE = `Check Mermaid fenced blocks and optional diagram artifacts.
@@ -60,6 +60,15 @@ const DIAGRAM_TYPES = new Set([
   "C4Component",
   "C4Dynamic",
   "C4Deployment",
+  "requirementDiagram",
+  "block-beta",
+  "architecture-beta",
+  "packet-beta",
+  "sankey-beta",
+  "radar-beta",
+  "treemap-beta",
+  "kanban",
+  "zenuml",
 ]);
 
 const OPEN_PAIRS = { "(": ")", "[": "]", "{": "}" };
@@ -144,6 +153,16 @@ function normalizeBody(bodyLines) {
   return `${bodyLines.join("\n")}\n`;
 }
 
+// Fences at column 0-3, inside list items (0-3 spaces) and inside blockquotes
+// (`> `, possibly nested) are recognized; deeper indentation is indented
+// code and is not scanned. An info string contributes only its first token,
+// so ```mermaid title=demo counts as mermaid. Body lines are analyzed and
+// hashed with the fence's own blockquote prefix removed.
+function stripQuotePrefix(line) {
+  const match = line.match(/^( {0,3}(>\s?)+)/);
+  return match ? line.slice(match[1].length) : line;
+}
+
 function extractBlocks(text) {
   const blocks = [];
   const lines = text.split(/\r?\n/);
@@ -163,25 +182,25 @@ function extractBlocks(text) {
   };
   lines.forEach((raw, position) => {
     const line = position + 1;
-    const fence = raw.match(/^(`{3,}|~{3,})\s*(\S*)?\s*$/);
+    const content = stripQuotePrefix(raw);
     if (open === null) {
+      const fence = content.match(/^ {0,3}(`{3,}|~{3,})\s*(\S+)?/);
       if (fence) {
-        const info = (fence[2] ?? "").split(/\s+/)[0] ?? "";
         open = {
           char: fence[1][0],
           length: fence[1].length,
-          info: info.toLowerCase(),
+          info: (fence[2] ?? "").toLowerCase(),
           startLine: line,
           body: [],
         };
       }
       return;
     }
-    const closing = raw.match(/^(`{3,}|~{3,})\s*$/);
+    const closing = content.match(/^ {0,3}(`{3,}|~{3,})\s*$/);
     if (closing && closing[1][0] === open.char && closing[1].length >= open.length) {
       closeBlock(line);
     } else {
-      open.body.push(raw);
+      open.body.push(content);
     }
   });
   // An unterminated fence still yields its collected lines as a block.
@@ -206,9 +225,10 @@ function firstToken(bodyLines) {
   return null;
 }
 
-// Whole-block bracket balance with "-quoted segments treated as opaque and
-// %%-comment lines excluded. Single quotes and backticks count as string
-// delimiters too. Not a grammar check: subgraph/end pairing and Mermaid
+// Whole-block bracket balance with double-quoted and backtick segments
+// treated as opaque and %%-comment lines excluded. A single quote is plain
+// Mermaid label text, not a string delimiter. An inline %% outside quotes
+// ends the line. Not a grammar check: subgraph/end pairing and Mermaid
 // semantics are out of scope.
 function bracketsBalanced(bodyLines) {
   const stack = [];
@@ -222,7 +242,8 @@ function bracketsBalanced(bodyLines) {
         else if (char === quote) quote = null;
         continue;
       }
-      if (char === '"' || char === "'" || char === "`") {
+      if (char === "%" && raw[i + 1] === "%") break;
+      if (char === '"' || char === "`") {
         quote = char;
         continue;
       }
@@ -323,12 +344,14 @@ function checkArtifact(rootReal, entry) {
 
 function scanSvgWarnings(text) {
   const warnings = [];
-  const urls = text.match(URL_PATTERN) ?? [];
+  // xmlns declarations are namespace identifiers, not resource loads.
+  const scanned = text.replace(/\s+xmlns(?::[\w-]+)?\s*=\s*("[^"]*"|'[^']*')/g, "");
+  const urls = scanned.match(URL_PATTERN) ?? [];
   const external = urls.filter((url) => !W3C_PATTERN.test(url));
   if (external.length > 0) {
     warnings.push(`svg links ${external.length} external URL(s), first: ${external[0]}`);
   }
-  if (/<script[\s>]/i.test(text) || /javascript:/i.test(text)) {
+  if (/<script[\s>]/i.test(scanned) || /javascript:/i.test(scanned)) {
     warnings.push("svg contains script content");
   }
   return warnings;
@@ -417,6 +440,18 @@ function check(docsRoot, { requireSvg, artifactRoot }) {
 
   if (manifest !== null) {
     const matched = new Set();
+    // Duplicate keys: only the first entry per (source, block) is checked;
+    // later ones are an explicit error, not silent orphans.
+    const seenKeys = new Set();
+    manifest.entries.forEach((entry, position) => {
+      const key = `${normalizeManifestSource(entry.source)}#${entry.block}`;
+      if (seenKeys.has(key)) {
+        errors.push({ code: "duplicate_manifest_entry", path: `${MANIFEST_NAME}#${position + 1}`, message: `manifest has a duplicate entry for ${entry.source}#${entry.block}; only the first is checked` });
+        matched.add(entry);
+      } else {
+        seenKeys.add(key);
+      }
+    });
     for (const block of blocks) {
       const entry = manifest.entries.find(
         (candidate) =>
@@ -437,6 +472,10 @@ function check(docsRoot, { requireSvg, artifactRoot }) {
       }
       if (requireSvg && !/\.svg$/i.test(entry.artifact)) {
         errors.push({ code: "non_svg_artifact", path: `${block.source}#${block.index}`, message: `manifest artifact for ${block.source}#${block.index} is not an .svg file: ${entry.artifact}` });
+        continue;
+      }
+      if (isAbsolute(entry.artifact)) {
+        errors.push({ code: "absolute_artifact_path", path: `${block.source}#${block.index}`, message: `manifest artifact must be relative to the artifact root: ${entry.artifact}` });
         continue;
       }
       const checked = checkArtifact(manifest.rootReal, entry);
@@ -467,7 +506,7 @@ function check(docsRoot, { requireSvg, artifactRoot }) {
     }
   }
 
-  return { blocks, errors, warnings, files };
+  return { blocks, errors, warnings, files, manifestLoaded: manifest !== null };
 }
 
 function emitHuman(report) {
@@ -528,6 +567,24 @@ function run(argv) {
   }
 
   const mapped = result.blocks.filter((block) => block.mapped).length;
+  const ARTIFACT_ERROR_CODES = new Set([
+    "artifact_source_hash_mismatch",
+    "artifact_hash_mismatch",
+    "artifact_missing",
+    "artifact_orphan",
+    "artifact_outside_root",
+    "artifact_unreadable",
+    "missing_manifest_entry",
+    "non_svg_artifact",
+    "duplicate_manifest_entry",
+    "absolute_artifact_path",
+  ]);
+  const manifestStatus =
+    result.manifestLoaded !== true
+      ? "unavailable"
+      : result.errors.some((error) => ARTIFACT_ERROR_CODES.has(error.code))
+        ? "errors"
+        : "verified";
   const report = {
     schema_version: 1,
     docs: docsRoot,
@@ -546,6 +603,7 @@ function run(argv) {
       files_scanned: result.files.length,
       blocks: result.blocks.length,
       mapped,
+      manifest_status: manifestStatus,
       errors: result.errors.length,
       warnings: result.warnings.length,
       status: result.errors.length === 0 ? "ok" : "errors",
