@@ -1,8 +1,9 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import net from "node:net";
-import { mkdtempSync, readFileSync, rmSync, appendFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
 import { tmpdir, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -368,4 +369,164 @@ test("browser behavior runs when Playwright exists, otherwise the request fails 
   assert.equal(summary.valid, true);
   const result = readJson(join(outDir, "result.json"));
   assert.equal(result.result.status, "passed");
+});
+
+function makeFakeDriver({ version, executable }) {
+  const base = makeTemp("e2e-fakedriver-");
+  const pkgDir = join(base, "node_modules", "playwright");
+  mkdirSync(pkgDir, { recursive: true });
+  writeFileSync(
+    join(pkgDir, "package.json"),
+    JSON.stringify({ name: "playwright", version, main: "index.js" }),
+  );
+  writeFileSync(
+    join(pkgDir, "index.js"),
+    [
+      "const exe = process.env.FAKE_PW_EXE;",
+      "module.exports.chromium = {",
+      "  executablePath: () => exe,",
+      "  launch: async () => { throw new Error(`Executable doesn't exist at ${exe}`); },",
+      "};",
+      "",
+    ].join("\n"),
+  );
+  return base;
+}
+
+function runWithBases(args, bases, extraEnv = {}) {
+  const sep = process.platform === "win32" ? ";" : ":";
+  return runRunner(args, {
+    env: { ...process.env, E2E_RUNNER_RUNTIME_DIRS: bases.join(sep), ...extraEnv },
+  });
+}
+
+test("package present but browser absent is unavailable, not failed", () => {
+  const base = makeFakeDriver({ version: "1.64.1" });
+  const outDir = makeTemp("e2e-nobrowser-");
+  const result = runWithBases(
+    ["--out-dir", outDir, "--json"],
+    [base],
+    { FAKE_PW_EXE: join(base, "no-such-chrome") },
+  );
+  assert.equal(result.status, 1);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "unavailable");
+  assert.match(JSON.stringify(report), /executable absent/);
+});
+
+test("pinned version mismatch is unavailable", () => {
+  const base = makeFakeDriver({ version: "2.0.0" });
+  const outDir = makeTemp("e2e-pinmismatch-");
+  const result = runWithBases(
+    ["--out-dir", outDir, "--json"],
+    [base],
+    { FAKE_PW_EXE: join(base, "no-such-chrome") },
+  );
+  assert.equal(result.status, 1);
+  assert.match(result.stdout + result.stderr, /pinned|major/i);
+});
+
+test("missing-executable launch failure is unavailable, not failed", () => {
+  const base = makeFakeDriver({ version: "1.64.1" });
+  const realFile = join(base, "real-file.txt");
+  writeFileSync(realFile, "x");
+  const outDir = makeTemp("e2e-launchmiss-");
+  const result = runWithBases(
+    ["--out-dir", outDir, "--adapter", "playwright", "--json"],
+    [base],
+    { FAKE_PW_EXE: realFile },
+  );
+  assert.equal(result.status, 1);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "unavailable");
+});
+
+test("browser failure captures screenshot, trace and logs", async (t) => {
+  const probe = spawnSync(process.execPath, ["-e", "require.resolve('playwright')"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  if (probe.status !== 0) {
+    t.skip("playwright not installed; failure capture needs a real browser");
+    return;
+  }
+  const outDir = makeTemp("e2e-failcap-");
+  const brokenRoot = makeTemp("e2e-brokenroot-");
+  mkdirSync(join(brokenRoot, "public"), { recursive: true });
+  writeFileSync(
+    join(brokenRoot, "public", "index.html"),
+    "<!doctype html><html><head><title>broken</title></head><body><p>no marker</p></body></html>\n",
+  );
+  const run = runRunner([
+    "--out-dir",
+    outDir,
+    "--adapter",
+    "playwright",
+    "--root",
+    join(brokenRoot, "public"),
+    "--timeout-ms",
+    "15000",
+    "--json",
+  ]);
+  assert.equal(run.status, 1);
+  const summary = JSON.parse(run.stdout);
+  assert.equal(summary.valid, true);
+  const result = readJson(join(outDir, "result.json"));
+  assert.equal(result.result.status, "failed");
+  const kinds = new Set(result.artifacts.map((item) => item.type));
+  assert.ok(kinds.has("screenshot"), "failure screenshot must be bound");
+  assert.ok(kinds.has("trace"), "failure trace must be bound");
+  assert.ok(kinds.has("log"), "server log must be bound");
+  for (const item of result.artifacts) {
+    const bytes = readFileSync(join(outDir, item.path));
+    assert.equal(bytes.length, item.size_bytes);
+    assert.equal(
+      createHash("sha256").update(bytes).digest("hex"),
+      item.sha256,
+    );
+  }
+});
+
+test("manifest carries validator codes and runner resource scope", () => {
+  const outDir = makeTemp("e2e-manifestmeta-");
+  const run = runRunner([
+    "--out-dir",
+    outDir,
+    "--adapter",
+    "none",
+    "--expected-sha",
+    "0".repeat(40),
+    "--json",
+  ]);
+  assert.equal(run.status, 1);
+  const summary = JSON.parse(run.stdout);
+  const manifest = readJson(join(outDir, `${summary.run_id}.run-manifest.json`));
+  assert.ok(manifest.validation.errors.includes("sha_mismatch"));
+  assert.equal(manifest.resources.scope, "runner");
+});
+
+test("signal path binds the server log artifact", async () => {
+  const outDir = makeTemp("e2e-signalbind-");
+  const child = spawn(
+    process.execPath,
+    [runnerPath, "--out-dir", outDir, "--adapter", "none", "--server-delay-ms", "10000"],
+    { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] },
+  );
+  let serverPid = null;
+  const watch = (chunk) => {
+    const match = /server: pid=(\d+) port=(\d+)/.exec(chunk.toString());
+    if (match !== null) serverPid = Number(match[1]);
+  };
+  child.stdout.on("data", watch);
+  child.stderr.on("data", watch);
+  assert.ok(await waitFor(() => serverPid !== null, 10000), "runner must report the server pid");
+  process.kill(child.pid, "SIGTERM");
+  const exitCode = await new Promise((resolve) => child.on("close", resolve));
+  assert.equal(exitCode, 143);
+  const result = readJson(join(outDir, "result.json"));
+  const logged = result.artifacts.find((item) => item.type === "log");
+  assert.ok(logged, "signal result must bind the server log");
+  const bytes = readFileSync(join(outDir, logged.path));
+  assert.equal(bytes.length, logged.size_bytes);
+  assert.equal(createHash("sha256").update(bytes).digest("hex"), logged.sha256);
 });

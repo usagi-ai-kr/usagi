@@ -24,9 +24,16 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { arch, platform } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
+import {
+  checkDriverPolicy,
+  detectDriver,
+  isMissingExecutableError,
+  loadDriver,
+  preflightExecutable,
+} from "./e2e-runner/resolve.mjs";
 
 const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
 const SERVER_SCRIPT = join(SCRIPTS_DIR, "e2e-runner", "server.mjs");
@@ -65,6 +72,10 @@ Options:
   --expected-dpr <number>    pass through to the validator
   --json                 print a machine-readable report (only JSON on stdout)
   --help                 show this help
+
+Environment:
+  E2E_RUNNER_RUNTIME_DIRS  extra driver search dirs (path-separated),
+                           checked before tools/e2e-reference and the repo root
 
 Exit codes:
   0  validator accepted the result and status is passed
@@ -484,9 +495,11 @@ async function main(argv) {
     const artifactEntries = Object.keys(files).map((name) => ({
       type: name.endsWith(".png")
         ? "screenshot"
-        : name.endsWith(".json")
-          ? "json"
-          : "log",
+        : name.endsWith(".trace.zip")
+          ? "trace"
+          : name.endsWith(".json")
+            ? "json"
+            : "log",
       path: name,
       sha256: files[name].sha256,
       size_bytes: files[name].size,
@@ -512,6 +525,9 @@ async function main(argv) {
       completeness,
     };
     const resources = measureResources();
+    // The manifest is supplementary evidence, not part of the validated
+    // result: it carries the validator verdict, so it is written after
+    // validation and referenced by path instead of being hash-bound.
     const manifest = {
       type: "e2e-run-manifest",
       schema_version: 1,
@@ -531,6 +547,7 @@ async function main(argv) {
         log_truncated: state.logTruncated,
       },
       resources: {
+        scope: "runner",
         wall_ms: duration,
         cpu_user_ms: resources.cpuUserMs,
         cpu_system_ms: resources.cpuSystemMs,
@@ -544,15 +561,6 @@ async function main(argv) {
       started_at: startedAt,
     };
     if (runError !== undefined) manifest.error = runError;
-    const manifestName = `${runId}.run-manifest.json`;
-    writeFileSync(join(outDir, manifestName), `${JSON.stringify(manifest, null, 2)}\n`);
-    const manifestBytes = readFileSync(join(outDir, manifestName));
-    result.artifacts.push({
-      type: "json",
-      path: manifestName,
-      sha256: sha256Hex(manifestBytes),
-      size_bytes: manifestBytes.length,
-    });
     const resultPath = join(outDir, "result.json");
     writeFileSync(resultPath, `${JSON.stringify(result, null, 2)}\n`);
 
@@ -584,6 +592,13 @@ async function main(argv) {
     } catch {
       validatorReport = null;
     }
+    manifest.validation = {
+      exit: validated.status,
+      errors: (validatorReport?.errors ?? []).map((error) => error.code),
+      warnings: (validatorReport?.warnings ?? []).map((warning) => warning.code),
+    };
+    const manifestName = `${runId}.run-manifest.json`;
+    writeFileSync(join(outDir, manifestName), `${JSON.stringify(manifest, null, 2)}\n`);
     return {
       resultPath,
       manifestPath: join(outDir, manifestName),
@@ -688,9 +703,20 @@ async function main(argv) {
   server.stderr.on("data", pushLog);
 
   installSignalTrap((signal, code) => {
+    // Best effort only: bind the server log with hash/size so the failure
+    // log is attached to the result instead of left unbound. The validator
+    // is skipped here because only synchronous work is safe in a trap.
     const logBytes = Buffer.concat(state.logBytes);
+    const logName = `${runId}.server.log`;
+    let logEntry = null;
     try {
-      writeFileSync(join(outDir, `${runId}.server.log`), logBytes);
+      writeFileSync(join(outDir, logName), logBytes);
+      logEntry = {
+        type: "log",
+        path: logName,
+        sha256: sha256Hex(logBytes),
+        size_bytes: logBytes.length,
+      };
     } catch {
       // Best effort only.
     }
@@ -710,7 +736,7 @@ async function main(argv) {
         exit_code: code,
         assertions: [{ id: "run interrupted", status: "blocked", message: `caught ${signal}` }],
       },
-      artifacts: [],
+      artifacts: logEntry === null ? [] : [logEntry],
       evidence: { console_errors: 0, network_failures: 0 },
       masking: { applied: false, fields: [] },
       started_at: startedAt,
@@ -904,23 +930,77 @@ async function main(argv) {
   state.identityVerified = true;
   state.phase = "scenario";
 
-  // ---- adapter selection ----
+  // ---- adapter selection (one resolution path for detect + execute) ----
+  const extraBases = (process.env.E2E_RUNNER_RUNTIME_DIRS ?? "")
+    .split(delimiter)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "");
   let adapterName = options.adapter;
   let adapterInfo = { name: adapterName, available: false };
+  let driver = null;
   if (adapterName === "auto" || adapterName === "playwright") {
-    const { detectPlaywright } = await import("./e2e-runner/playwright-adapter.mjs");
-    const detected = detectPlaywright();
-    if (adapterName === "playwright" && !detected.available) {
-      clearTimeout(watchdog);
-      console.error(`error: --adapter playwright was requested but ${detected.reason}`);
-      process.exit(2);
-    }
-    if (detected.available) {
-      adapterName = "playwright";
-      adapterInfo = { name: "playwright", available: true, version: detected.version };
-    } else {
+    const detected = detectDriver(extraBases);
+    if (!detected.available) {
+      if (adapterName === "playwright") {
+        clearTimeout(watchdog);
+        const { leftovers } = await cleanup();
+        state.leftovers = leftovers;
+        console.error(`error: --adapter playwright was requested but ${detected.reason}`);
+        process.exit(2);
+      }
       adapterName = "none";
       adapterInfo = { name: "none", available: false, reason: detected.reason };
+    } else {
+      const policy = checkDriverPolicy(detected);
+      if (policy !== null) {
+        if (adapterName === "playwright") {
+          clearTimeout(watchdog);
+          const { leftovers } = await cleanup();
+          state.leftovers = leftovers;
+          console.error(`error: --adapter playwright was requested but ${policy}`);
+          process.exit(2);
+        }
+        adapterName = "none";
+        adapterInfo = { name: "none", available: false, reason: policy };
+      } else {
+        try {
+          driver = { ...(await loadDriver(detected.entry)), ...detected };
+        } catch (error) {
+          const reason = `driver ${detected.name}@${detected.version} failed to load: ${error?.message ?? error}`;
+          if (adapterName === "playwright") {
+            clearTimeout(watchdog);
+            const { leftovers } = await cleanup();
+            state.leftovers = leftovers;
+            console.error(`error: --adapter playwright was requested but ${reason}`);
+            process.exit(2);
+          }
+          adapterName = "none";
+          adapterInfo = { name: "none", available: false, reason };
+        }
+        if (driver !== null) {
+          const preflight = preflightExecutable(driver.chromium);
+          if (!preflight.ok) {
+            if (adapterName === "playwright") {
+              clearTimeout(watchdog);
+              const { leftovers } = await cleanup();
+              state.leftovers = leftovers;
+              console.error(`error: --adapter playwright was requested but ${preflight.reason}`);
+              process.exit(2);
+            }
+            adapterName = "none";
+            adapterInfo = { name: "none", available: false, reason: preflight.reason };
+            driver = null;
+          } else {
+            adapterName = "playwright";
+            adapterInfo = {
+              name: detected.name,
+              available: true,
+              version: detected.version,
+              baseDir: detected.baseDir,
+            };
+          }
+        }
+      }
     }
   } else {
     adapterInfo = { name: "none", available: false, reason: "browser adapter disabled by --adapter none" };
@@ -961,10 +1041,11 @@ async function main(argv) {
   const { runBehaviorScenario } = await import("./e2e-runner/playwright-adapter.mjs");
   const screenshotName = `${runId}.screenshot.png`;
   const observationsName = `${runId}.observations.json`;
-  let observations = null;
-  let observationError = null;
+  const traceName = `${runId}.trace.zip`;
+  let outcome = null;
   try {
-    observations = await runBehaviorScenario({
+    outcome = await runBehaviorScenario({
+      chromium: driver.chromium,
       url: `http://127.0.0.1:${state.serverPort}/`,
       viewport: options.viewport,
       dpr: options.dpr,
@@ -973,9 +1054,48 @@ async function main(argv) {
       theme: options.theme,
       opTimeoutMs: remaining,
       screenshotPath: join(outDir, screenshotName),
+      tracePath: join(outDir, traceName),
     });
   } catch (error) {
-    observationError = error;
+    if (isMissingExecutableError(error)) {
+      // The binary vanished between preflight and launch: the optional
+      // browser is absent, never a scenario failure.
+      clearTimeout(watchdog);
+      const { leftovers } = await cleanup();
+      state.leftovers = leftovers;
+      const logBytes = Buffer.concat(state.logBytes);
+      const out = await emit({
+        status: "unavailable",
+        exitCode: 2,
+        completeness: "unavailable",
+        assertions: [],
+        artifacts: { [`${runId}.server.log`]: logBytes },
+        environment: baseEnvironment(),
+        evidence: { console_errors: 0, network_failures: 0, stdout_ref: `${runId}.server.log` },
+        masking: { applied: false, fields: [] },
+        runError: `browser executable missing at launch: ${error?.message ?? error}`,
+      });
+      finish(out, {
+        valid: out.validator.status === 0,
+        status: "unavailable",
+        lines: [
+          `server: pid=${state.serverPid} port=${state.serverPort} (identity verified)`,
+          `browser: unavailable (executable missing at launch)`,
+        ],
+        exit: 1,
+        result: out.resultPath,
+      });
+      return;
+    }
+    outcome = {
+      observations: null,
+      screenshot: null,
+      trace: null,
+      failed: error?.message ?? String(error),
+      consoleErrors: 0,
+      networkFailures: 0,
+      wallMs: 0,
+    };
   }
 
   clearTimeout(watchdog);
@@ -983,7 +1103,16 @@ async function main(argv) {
   state.leftovers = leftovers;
   const logBytes = Buffer.concat(state.logBytes);
 
-  if (state.timedOut || observations === null) {
+  if (state.timedOut || outcome.observations === null) {
+    const failedArtifacts = { [`${runId}.server.log`]: logBytes };
+    for (const name of [screenshotName, traceName]) {
+      try {
+        const bytes = readFileSync(join(outDir, name));
+        if (bytes.length > 0) failedArtifacts[name] = bytes;
+      } catch {
+        // A file that was never written must never be fabricated.
+      }
+    }
     const out = await emit({
       status: "failed",
       exitCode: state.timedOut ? 124 : 1,
@@ -994,14 +1123,18 @@ async function main(argv) {
           status: "failed",
           message: state.timedOut
             ? `exceeded ${options.timeoutMs}ms`
-            : `browser run failed: ${observationError?.message ?? "unknown error"}`,
+            : `browser run failed: ${outcome.failed ?? "unknown error"}`,
         },
       ],
-      artifacts: { [`${runId}.server.log`]: logBytes },
+      artifacts: failedArtifacts,
       environment: baseEnvironment({
-        browser_version: adapterInfo.version ?? "unavailable",
+        browser_version: outcome.browserVersion ?? "unavailable",
       }),
-      evidence: { console_errors: 0, network_failures: 0, stdout_ref: `${runId}.server.log` },
+      evidence: {
+        console_errors: outcome.consoleErrors,
+        network_failures: outcome.networkFailures,
+        stdout_ref: `${runId}.server.log`,
+      },
       masking: { applied: false, fields: [] },
       runError: state.timedOut ? "watchdog timeout" : undefined,
     });
@@ -1015,6 +1148,7 @@ async function main(argv) {
     return;
   }
 
+  const observations = outcome.observations;
   const assertionList = [
     {
       id: "page loads with http 200",
@@ -1032,20 +1166,22 @@ async function main(argv) {
     },
   ];
   const allPassed = assertionList.every((item) => item.status === "passed");
-  const observationsBytes = Buffer.from(`${JSON.stringify(observations, null, 2)}\n`);
-  const screenshotBytes = readFileSync(join(outDir, screenshotName));
+  const browserArtifacts = { [`${runId}.server.log`]: logBytes };
+  if (outcome.screenshot !== null) {
+    browserArtifacts[screenshotName] = readFileSync(join(outDir, screenshotName));
+  }
+  if (outcome.trace !== null) {
+    browserArtifacts[traceName] = readFileSync(join(outDir, traceName));
+  }
+  browserArtifacts[observationsName] = Buffer.from(`${JSON.stringify(observations, null, 2)}\n`);
   const out = await emit({
     status: allPassed ? "passed" : "failed",
     exitCode: allPassed ? 0 : 1,
     completeness: "complete",
     assertions: assertionList,
-    artifacts: {
-      [`${runId}.server.log`]: logBytes,
-      [screenshotName]: screenshotBytes,
-      [observationsName]: observationsBytes,
-    },
+    artifacts: browserArtifacts,
     environment: baseEnvironment({
-      browser_version: adapterInfo.version ?? "unavailable",
+      browser_version: outcome.browserVersion ?? "unavailable",
       font_ready: observations.fontReady,
     }),
     evidence: {
@@ -1060,7 +1196,7 @@ async function main(argv) {
     status: allPassed ? "passed" : "failed",
     lines: [
       `server: pid=${state.serverPid} port=${state.serverPort} (identity verified)`,
-      `browser: chromium ${adapterInfo.version ?? ""} (${observations.wallMs}ms)`,
+      `browser: ${adapterInfo.name} ${outcome.browserVersion ?? ""} (${observations.wallMs}ms)`,
     ],
     exit: allPassed && out.validator.status === 0 ? 0 : 1,
     result: out.resultPath,

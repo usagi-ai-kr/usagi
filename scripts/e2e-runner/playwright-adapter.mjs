@@ -1,33 +1,15 @@
 /**
- * Optional Playwright adapter for scripts/e2e-runner.mjs.
+ * Playwright behavior scenario for scripts/e2e-runner.mjs.
  *
- * Playwright is NEVER installed here. Detection only reads what is already
- * installed; absence is reported as unavailable, never worked around.
- * Expected version when present: playwright 1.x (uses only the stable
- * chromium.launch / newContext / page API surface). Untested where no
- * browser exists; record that explicitly instead of claiming success.
+ * The chromium module is injected by the caller (resolved through
+ * resolve.mjs), so this file never resolves or installs anything itself.
+ * A trace starts before navigation. On any scenario failure the runner
+ * gets a screenshot (only if the page is still alive) and the stopped
+ * trace archive; paths that were never written are reported as null and
+ * must never be fabricated into artifacts by the caller.
+ * Untested where no browser exists; do not claim otherwise.
  */
-import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
-
-export function detectPlaywright() {
-  try {
-    const require = createRequire(import.meta.url);
-    const packagePath = require.resolve("playwright/package.json");
-    let version = "unknown";
-    try {
-      version = JSON.parse(readFileSync(packagePath, "utf8")).version ?? "unknown";
-    } catch {
-      version = "unknown";
-    }
-    return { available: true, version };
-  } catch {
-    return {
-      available: false,
-      reason: "playwright package is not installed (optional dependency, never auto-installed)",
-    };
-  }
-}
+import { existsSync, statSync } from "node:fs";
 
 function observeConsole(page, counters) {
   page.on("console", (message) => {
@@ -41,12 +23,26 @@ function observeConsole(page, counters) {
   });
 }
 
+function writtenFile(path) {
+  try {
+    if (path !== null && existsSync(path) && statSync(path).isFile() && statSync(path).size > 0) {
+      return path;
+    }
+  } catch {
+    // Treated as absent below.
+  }
+  return null;
+}
+
 /**
  * Drive the reference behavior scenario: load the page, wait for the
  * readiness marker, flip the action control and read the outcome.
- * Throws on any failure; the caller preserves partial evidence.
+ * Returns { observations|null, screenshot, trace, failed } where failed is
+ * an error message or null. Never throws for scenario failures; launch and
+ * context failures propagate to the caller.
  */
 export async function runBehaviorScenario({
+  chromium,
   url,
   viewport,
   dpr,
@@ -55,22 +51,40 @@ export async function runBehaviorScenario({
   theme,
   opTimeoutMs,
   screenshotPath,
+  tracePath,
 }) {
-  const { chromium } = await import("playwright");
   const startedAt = Date.now();
   const counters = { consoleErrors: 0, networkFailures: 0 };
   const browser = await chromium.launch({ headless: true });
+  let browserVersion = "unavailable";
   try {
-    const context = await browser.newContext({
+    const reported = browser.version();
+    if (typeof reported === "string" && reported !== "") browserVersion = reported;
+  } catch {
+    browserVersion = "unavailable";
+  }
+  let context = null;
+  let page = null;
+  let observations = null;
+  let failed = null;
+  let traced = false;
+  try {
+    context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
       deviceScaleFactor: dpr,
       locale,
       timezoneId: timezone,
       colorScheme: theme === "dark" ? "dark" : "light",
     });
+    page = await context.newPage();
+    observeConsole(page, counters);
     try {
-      const page = await context.newPage();
-      observeConsole(page, counters);
+      await context.tracing.start({ screenshots: true, snapshots: false });
+      traced = true;
+    } catch {
+      traced = false;
+    }
+    try {
       const response = await page.goto(url, {
         waitUntil: "domcontentloaded",
         timeout: opTimeoutMs,
@@ -89,8 +103,8 @@ export async function runBehaviorScenario({
           ? document.fonts.status === "loaded"
           : true,
       );
-      await page.screenshot({ path: screenshotPath });
-      return {
+      await page.screenshot({ path: screenshotPath, timeout: opTimeoutMs });
+      observations = {
         httpStatus,
         title,
         heading: heading?.trim() ?? null,
@@ -100,10 +114,38 @@ export async function runBehaviorScenario({
         networkFailures: counters.networkFailures,
         wallMs: Date.now() - startedAt,
       };
-    } finally {
-      await context.close();
+    } catch (scenarioError) {
+      failed = scenarioError?.message ?? String(scenarioError);
+      try {
+        if (page !== null && !page.isClosed()) {
+          await page.screenshot({ path: screenshotPath, timeout: 10000 });
+        }
+      } catch {
+        // A dead page yields no screenshot; the trace below may still exist.
+      }
+    }
+    if (traced) {
+      try {
+        await context.tracing.stop({ path: tracePath });
+      } catch {
+        // A broken context yields no trace archive.
+      }
     }
   } finally {
-    await browser.close();
+    try {
+      await browser.close();
+    } catch {
+      // Best effort; leftovers are reported by the caller where observable.
+    }
   }
+  return {
+    observations,
+    browserVersion,
+    screenshot: writtenFile(screenshotPath),
+    trace: traced ? writtenFile(tracePath) : null,
+    failed,
+    consoleErrors: counters.consoleErrors,
+    networkFailures: counters.networkFailures,
+    wallMs: Date.now() - startedAt,
+  };
 }

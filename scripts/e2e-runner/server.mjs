@@ -179,13 +179,13 @@ server.listen(options.port, "127.0.0.1", () => {
 if (options.watchParent !== null && platform() !== "win32") {
   const parent = options.watchParent;
   setInterval(() => {
-    try {
-      process.kill(parent, 0);
-    } catch (error) {
-      if (error.code === "ESRCH") {
-        console.error(`parent ${parent} gone, exiting`);
-        process.exit(0);
-      }
+    // Compare the live parent pid instead of probing the watched pid: this
+    // also covers PID reuse, where kill(parent, 0) could succeed for an
+    // unrelated process. Only the runner's own children are ever signalled,
+    // so a stale watch can leak the server but never kill another process.
+    if (process.ppid !== parent) {
+      console.error(`parent ${parent} gone (ppid ${process.ppid}), exiting`);
+      process.exit(0);
     }
   }, 100);
 }
