@@ -4,6 +4,8 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-20
+
 ### Added
 
 - Visualization selection policy and visualization skill for Markdown/Mermaid-first diagrams with optional specialized tools.
