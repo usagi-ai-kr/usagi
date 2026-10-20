@@ -107,7 +107,7 @@ These are **interfaces / requirements only** in this PR. No shell scripts, CI en
 
 ## 8. Worker reuse, panel changes and session recovery
 
-Source: [Issue #35](https://github.com/usagi-ai-kr/usagi/issues/35). These are dispatch-time rules about **who** executes a unit and **how** completion is observed. Field definitions for handoff packets, verification records and triage stay in [delegation, handoff and verification evidence](./delegation-handoff-evidence.md) and [harness triage and evidence assurance](./harness-triage-evidence-assurance.md); this section links to them instead of redefining them.
+Source: [Issue #35](https://github.com/usagi-ai-kr/usagi/issues/35), [Issue #50](https://github.com/usagi-ai-kr/usagi/issues/50). These are dispatch-time rules about **who** executes a unit and **how** completion is observed. Field definitions for handoff packets, verification records and triage stay in [delegation, handoff and verification evidence](./delegation-handoff-evidence.md) and [harness triage and evidence assurance](./harness-triage-evidence-assurance.md); this section links to them instead of redefining them.
 
 A unit still gets an isolated worktree (§6); reuse applies to the worker/agent, not to sharing a mutable worktree.
 
@@ -126,6 +126,14 @@ verification: ["node scripts/validate.mjs"]
 ```
 
 - Model and session changes happen only on explicit user request. Free/preview models are for small drafts and reviews; long or stateful units go to a stronger model. Never auto-inherit another repository's model, session or quota policy.
+
+### Worker identity and naming
+
+- A worker gets a unique name of 1–4 lowercase English alphabetic characters (e.g., `glm`, `mini`), unique among live agents.
+- The Herdr agent name and the tab label must be the same string, so dispatch, reports and triage refer to one identity.
+- Keep the name stable for the session; do not rename it per task. Rename only when the role or occupant changes, recording old name, new name, reason and time in the report or ledger.
+- Do not group multiple workers under one nickname; address each worker by its own name.
+- Naming does not relax the rule above: model and session changes still require an explicit user request.
 
 ### One writer per path
 
