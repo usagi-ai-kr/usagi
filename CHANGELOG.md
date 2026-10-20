@@ -4,6 +4,10 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the README version summary and toolchain example for v0.2.0.
+
 ## [0.2.0] - 2026-10-20
 
 ### Added
