@@ -12,6 +12,7 @@ All notable changes to this project are documented here. This project follows [S
 - Human-readable wiki page synthesizing model-operation observations from moi, yoroi, and the-great-dalmuti.
 - Human-readable wiki concept page covering skills, rule files, DESIGN.md, TDD and layers.
 - Design reference catalog, design decision template, and design-review skill for token-grounded visual work.
+- Priority client configuration for opencode and Claude Code, with an integration guide and fallbacks for Antigravity CLI and Codex.
 
 ### Changed
 

@@ -45,6 +45,9 @@ const requiredFiles = [
   "VERSION",
   "CHANGELOG.md",
   "PROMPTS.md",
+  "opencode.jsonc",
+  ".claude/settings.json",
+  "docs/client-integration.md",
   "docs/glossary.md",
   "docs/glossary/categories.json",
   "docs/human-writing-contract.md",
@@ -628,6 +631,57 @@ function checkReleaseWorkflow() {
   }
 }
 
+function checkClientConfigs() {
+  const opencodePath = join(root, "opencode.jsonc");
+  if (existsSync(opencodePath)) {
+    let config;
+    try {
+      config = JSON.parse(read(opencodePath));
+    } catch (error) {
+      fail(`opencode.jsonc: invalid JSON: ${error.message}`);
+    }
+    if (config !== undefined) {
+      const paths = config?.skills?.paths;
+      if (!Array.isArray(paths)) {
+        fail("opencode.jsonc: missing skills.paths array");
+      } else if (!paths.includes(".agents/skills")) {
+        fail('opencode.jsonc: skills.paths must include ".agents/skills"');
+      }
+    }
+  }
+
+  const claudeSettingsPath = join(root, ".claude/settings.json");
+  if (existsSync(claudeSettingsPath)) {
+    let settings;
+    try {
+      settings = JSON.parse(read(claudeSettingsPath));
+    } catch (error) {
+      fail(`.claude/settings.json: invalid JSON: ${error.message}`);
+    }
+    if (
+      settings !== undefined &&
+      (typeof settings?.permissions !== "object" || settings.permissions === null)
+    ) {
+      fail(".claude/settings.json: permissions must be an object");
+    }
+  }
+
+  const guidePath = join(root, "docs/client-integration.md");
+  if (existsSync(guidePath)) {
+    const text = read(guidePath);
+    for (const expected of [
+      "opencode",
+      "Claude Code",
+      "Antigravity CLI",
+      "Codex",
+    ]) {
+      if (!text.includes(expected)) {
+        fail(`docs/client-integration.md: must mention "${expected}"`);
+      }
+    }
+  }
+}
+
 const glossaryCount = checkGlossary();
 const labelCount = checkLabels();
 checkBranchProtection();
@@ -640,6 +694,7 @@ checkContributing();
 checkSectionNumbers();
 checkPromptLibrary();
 checkHarnessStarter();
+checkClientConfigs();
 checkAgentsBudget();
 checkVersion();
 
