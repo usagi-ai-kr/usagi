@@ -61,6 +61,12 @@ jobs:
       - name: Test diagram checker
         run: node --test scripts/check-diagrams.test.mjs
 
+      - name: Test test-gate runner
+        run: node --test scripts/run-test-gates.test.mjs
+
+      - name: Run fixture unit gate
+        run: node scripts/run-test-gates.mjs --config test/fixtures/test-gates/config.json --only unit --json --evidence-dir tmp/test-gates
+
       - name: Check contract metadata
         run: node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 

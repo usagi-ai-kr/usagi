@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "gates": [
+    {
+      "id": "unit",
+      "level": "unit",
+      "command": ["node", "--test", "test/fixtures/test-gates/unit.test.mjs"],
+      "required": true,
+      "timeout_ms": 60000,
+      "when": "always"
+    },
+    {
+      "id": "regression",
+      "level": "regression",
+      "command": ["node", "--test", "test/fixtures/test-gates/regression.test.mjs"],
+      "required": false,
+      "timeout_ms": 60000,
+      "when": "always"
+    }
+  ]
+}
