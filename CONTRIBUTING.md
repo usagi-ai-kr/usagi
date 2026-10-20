@@ -50,13 +50,18 @@ Wiki는 사람이 읽는 문서이므로 운영 규칙을 추가하지 말고, �
 ```bash
 node scripts/validate.mjs
 node scripts/build-glossary-index.mjs --check
-npx --yes skills-ref@0.1.5 validate .agents/skills/glossary
+node --test scripts/check-human-doc.test.mjs
+node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
+for skill in .agents/skills/*; do npx --yes skills-ref@0.1.5 validate "$skill"; done
 npx --yes @google/design.md@0.4.0 lint DESIGN.md
 for script in scripts/*.sh; do bash -n "$script"; done
 ```
 
 - `validate` CI가 통과해야 합니다.
 - 검증한 커밋과 병합할 커밋이 같은지 head SHA로 확인합니다.
+- 사람이 읽는 문서는 [독자 중심 작성 계약](docs/human-writing-contract.md)과 [human-doc 스킬](.agents/skills/human-doc/SKILL.md)을 따릅니다.
+- `node scripts/check-human-doc.mjs <문서.md>`는 문장 64자·문단 256자·문서 1,024자의 초과를 경고합니다. `--require-metadata`는 `doc_type`, `audience`, 문서 유형별 필수 필드를 검사합니다.
+- 길이 경고는 구조 개선 신호이며, 의미적 완성도와 예외는 리뷰어가 판단합니다.
 
 ## 4. PR
 
