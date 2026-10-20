@@ -9,6 +9,7 @@ All notable changes to this project are documented here. This project follows [S
 - Toolchain contract and non-destructive doctor for dependency and OS diagnostics.
 - Architecture responsibility/dependency contract, example map, and static layer-dependency checker.
 - Human-readable wiki page synthesizing model-operation observations from moi, yoroi, and the-great-dalmuti.
+- Human-readable wiki concept page covering skills, rule files, DESIGN.md, TDD and layers.
 
 ## [0.1.3] - 2026-10-20
 

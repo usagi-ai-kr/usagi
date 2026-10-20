@@ -2,9 +2,10 @@
 
 에이전트를 안정적으로 운용하기 위한 개념과 흐름을 사람이 읽기 쉽게 정리합니다.
 
-## 처음 읽기
+## 개념
 
 - [하네스 엔지니어링이란?](What-is-Harness-Engineering)
+- [개념: 스킬·규칙·설계·테스트·레이어](Concepts)
 - [운영 플로우](Workflows)
 - [하네스 시작하기](Harness-Starter)
 - [모델별 운용 기록](Model-Operations)
