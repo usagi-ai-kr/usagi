@@ -236,6 +236,40 @@ test("an unreadable subdirectory exits 2", (t) => {
   }
 });
 
+test("fenced code blocks are excluded from the scan", () => {
+  const dir = makeDocs({
+    "srs.md": `# SRS
+
+- REQ-F-001: 로그인 실패 시 오류 메시지를 표시한다.
+
+| 요구사항 | 테스트 | 결정 |
+| --- | --- | --- |
+| REQ-F-001 | tests/auth.test.ts | ADR-001 |
+
+## 예시
+
+\`\`\`markdown
+- REQ-F-002: 코드펜스 안의 예시 선언
+| REQ-F-001 | tests/example.test.ts | ADR-002 |
+\`\`\`
+
+~~~markdown
+- REQ-F-003: 물결표 펜스 안의 예시 선언
+~~~
+`,
+    "adr/ADR-001.md": ADR_DOC,
+  });
+  const { result, report } = runJson(dir);
+  assert.equal(result.status, 0);
+  assert.deepEqual(report.errors, []);
+  assert.deepEqual(
+    report.requirements.map((requirement) => requirement.id),
+    ["REQ-F-001"],
+  );
+  const [requirement] = report.requirements;
+  assert.deepEqual(requirement.adr_refs, ["ADR-001"]);
+});
+
 test("--json reports schema, mode, docs, requirements, errors, warnings and summary", () => {
   const dir = makeDocs({
     "srs.md": COMPLETE_SRS,

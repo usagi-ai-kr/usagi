@@ -42,6 +42,7 @@ const REQUIREMENT_HEAD_PATTERN = /^REQ-[A-Z]+-\d+(?![0-9A-Za-z가-힣])/;
 const ADR_PATTERN = /ADR-\d+(?![0-9A-Za-z])/g;
 const ADR_HEAD_PATTERN = /^ADR-\d+(?![0-9A-Za-z가-힣])/;
 const ADR_FILE_PATTERN = /ADR-\d+/i;
+const FENCE_PATTERN = /^\s{0,3}(`{3,}|~{3,})/;
 const PLACEHOLDER_CELLS = new Set([
   "n/a",
   "na",
@@ -175,7 +176,22 @@ function analyzeFile(filePath, root) {
     map.get(key).push(value);
   };
 
+  // Fenced code blocks hold examples, not live requirements, so they are
+  // skipped entirely. The fence marker lines are skipped as well.
+  let fence = null;
   lines.forEach((raw, index) => {
+    const fenceMatch = FENCE_PATTERN.exec(raw);
+    if (fenceMatch) {
+      const marker = fenceMatch[1];
+      if (fence === null) {
+        fence = marker[0];
+      } else if (marker[0] === fence) {
+        fence = null;
+      }
+      return;
+    }
+    if (fence !== null) return;
+
     const line = index + 1;
     const ids = [...raw.matchAll(REQUIREMENT_PATTERN)].map((match) => match[0]);
     const adrs = [...raw.matchAll(ADR_PATTERN)].map((match) => match[0]);

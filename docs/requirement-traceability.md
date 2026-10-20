@@ -11,9 +11,14 @@ Source: [Issue #59](https://github.com/usagi-ai-kr/usagi/issues/59).
 
 ## 1. 요구사항 ID
 
-- 형식은 `REQ-<종류>-<일련번호>`입니다. 예: `REQ-F-001`, `REQ-N-001`.
+- 형식은 `REQ-<종류>-<일련번호>`입니다.
 - 종류는 문서에서 정합니다. 기능은 `F`, 비기능은 `N`을 씁니다.
 - 같은 ID를 두 번 선언하지 않습니다. 선언은 한 군데만 둡니다.
+
+```markdown
+- REQ-F-001: 로그인 실패 시 오류 메시지를 표시한다.
+- REQ-N-001: 응답 지연을 200ms 이하로 유지한다.
+```
 
 ## 2. 선언·매핑·참조
 
@@ -31,7 +36,9 @@ ID 뒤에 한국어 조사가 붙으면 선언이 아니라 본문 언급으로 
 본문에서 REQ-F-001을 다시 언급한다.
 ```
 
-위 세 줄은 각각 선언, 매핑 행, 참조입니다. 코드펜스 안의 예시도 문서 본문과 똑같이 검사됩니다. 예시에만 넣을 ID는 다른 이름으로 바꿉니다.
+위 세 줄은 각각 선언, 매핑 행, 참조입니다.
+
+코드펜스 안의 내용은 검사에서 제외합니다. 예시로 쓰는 ID는 코드펜스 안에 두면 요구사항으로 세지지 않습니다. 참고 문서와 템플릿을 검사 대상에서 완전히 분리하는 일은 [#59의 남은 범위](https://github.com/usagi-ai-kr/usagi/issues/59#issuecomment-6287086018)에 남아 있습니다.
 
 ## 3. ADR 레지스트리
 
@@ -60,6 +67,15 @@ node scripts/check-requirement-trace.mjs --docs docs --mode full --json
 
 `--docs`는 필수입니다. `.git`, `node_modules`, `tmp` 디렉터리는 건너뜁니다. 읽을 수 없는 디렉터리나 문서가 있으면 조용히 넘어가지 않고 `2`로 끝냅니다. 검사기는 파일을 읽기만 하고 쓰거나 설치하지 않습니다.
 
+### 기대 결과
+
+| 명령 | 종료 코드 | 출력 요지 |
+| --- | --- | --- |
+| `node scripts/check-requirement-trace.mjs --docs docs --mode light` | `0` | 오류 없음. 경고 2건(용어집이 참조한 `ADR-0042`, 요구사항 ID가 없다는 안내)과 요약 줄만 낸다 |
+| `node scripts/check-requirement-trace.mjs --docs docs --mode full` | `1` | 오류는 용어집이 참조한 `ADR-0042`(선언 없음) 1건. 저장소 문서에는 요구사항 ID가 없어 매핑 누락 오류는 없다 |
+
+성공 예는 저장소 문서 트리, 실패 예는 같은 트리의 전체 모드입니다. 프로젝트 문서는 `full` 모드로 검사하고 참고 문서·템플릿은 검사 대상에서 빼는 구성을 권합니다.
+
 ## 6. JSON 리포트
 
 `schema_version`, `mode`, `docs`, `requirements[]`, `errors[]`, `warnings[]`, `summary`를 냅니다.
@@ -75,7 +91,17 @@ node scripts/check-requirement-trace.mjs --docs docs --mode full --json
 
 내용 판단은 [document-review 스킬](../.agents/skills/document-review/SKILL.md)과 리뷰어 몫입니다. 기계 검사는 통과 근거가 아니라 확인의 출발점입니다.
 
-## 8. 관련
+## 8. 미룬 범위
+
+[#59의 남은 범위 체크리스트](https://github.com/usagi-ai-kr/usagi/issues/59#issuecomment-6287086018)가 다음 항목을 추적합니다.
+
+- 문서 템플릿 연결: `docs/document-templates.md`의 템플릿 ID와 검사 대상 문서를 분리해 연결
+- 금지된 추측 표시(speculation marker) 검사
+- ADR 대체(superseded) 관계와 링크 누락 검사
+
+미룬 이유는 이 이슈가 최소 동작을 먼저 고정하는 범위였기 때문입니다. ID 추출·매핑·light/full 경로 검사가 그 범위입니다. 완료 조건은 각 항목에 정상·실패 fixture 테스트가 있고 이 문서에 사용법과 한계가 적히는 것입니다.
+
+## 9. 관련
 
 - [#59](https://github.com/usagi-ai-kr/usagi/issues/59) — PRD/SRS/ADR 요구사항 추적성 검사기
 - [#46](https://github.com/usagi-ai-kr/usagi/issues/46) — 프로젝트 규모별 문서 검토 경로 제안
