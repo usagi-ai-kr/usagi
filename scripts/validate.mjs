@@ -41,10 +41,13 @@ const requiredFiles = [
   "AGENTS.md",
   "CLAUDE.md",
   "CONTRIBUTING.md",
+  "DESIGN.md",
   "docs/glossary.md",
   "docs/glossary/categories.json",
   "docs/wiki/Home.md",
   "docs/wiki/_Sidebar.md",
+  "docs/wiki/What-is-Harness-Engineering.md",
+  "docs/wiki/Workflows.md",
   ".agents/skills/glossary/SKILL.md",
   ".github/labels.json",
   ".github/branch-protection.json",
@@ -297,6 +300,8 @@ function checkWorkflow() {
     "push:",
     "name: validate",
     "node scripts/validate.mjs",
+    "skills-ref@0.1.5 validate .agents/skills/glossary",
+    "@google/design.md@0.4.0 lint DESIGN.md",
     "permissions:",
     "contents: read",
   ]) {
@@ -310,15 +315,128 @@ function checkSkill() {
   const path = join(root, ".agents/skills/glossary/SKILL.md");
   if (!existsSync(path)) return;
   const text = read(path);
+  const frontmatter = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!frontmatter) {
+    fail(".agents/skills/glossary/SKILL.md: missing YAML frontmatter");
+    return;
+  }
 
-  if (!text.startsWith("---\n")) {
-    fail(".agents/skills/glossary/SKILL.md: missing frontmatter");
+  const field = (name) => {
+    const match = frontmatter[1].match(new RegExp(`^${name}:\\s*(.+)$`, "m"));
+    return match ? match[1].trim() : "";
+  };
+  const name = field("name");
+  const description = field("description");
+  const compatibility = field("compatibility");
+  const body = text.slice(frontmatter[0].length);
+
+  if (name !== "glossary") {
+    fail(`.agents/skills/glossary/SKILL.md: name must be "glossary", got "${name}"`);
   }
-  if (!text.includes("\nname: glossary\n")) {
-    fail(".agents/skills/glossary/SKILL.md: missing name: glossary");
+  if (name.length > 64 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
+    fail(".agents/skills/glossary/SKILL.md: name must be 1-64 lowercase alphanumeric/hyphen characters");
   }
-  if (!text.includes("\ndescription: ")) {
-    fail(".agents/skills/glossary/SKILL.md: missing description");
+  if (description.length < 1 || description.length > 1024) {
+    fail(".agents/skills/glossary/SKILL.md: description must be 1-1024 characters");
+  }
+  if (compatibility && (compatibility.length < 1 || compatibility.length > 500)) {
+    fail(".agents/skills/glossary/SKILL.md: compatibility must be 1-500 characters");
+  }
+  if (body.trim() === "") {
+    fail(".agents/skills/glossary/SKILL.md: empty instructions body");
+  }
+  if (body.split(/\r?\n/).length > 500) {
+    fail(".agents/skills/glossary/SKILL.md: body should stay under 500 lines");
+  }
+}
+
+function checkDesign() {
+  const path = join(root, "DESIGN.md");
+  if (!existsSync(path)) return;
+  const text = read(path);
+  const frontmatter = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+
+  if (!frontmatter) {
+    fail("DESIGN.md: missing YAML frontmatter");
+  } else {
+    for (const key of [
+      "name:",
+      "colors:",
+      "typography:",
+      "rounded:",
+      "spacing:",
+      "components:",
+    ]) {
+      if (!frontmatter[1].includes(key)) {
+        fail(`DESIGN.md: missing frontmatter key "${key}"`);
+      }
+    }
+  }
+
+  const sections = [...text.matchAll(/^## (.+)$/gm)].map((match) => match[1].trim());
+  const canonical = [
+    "Overview",
+    "Colors",
+    "Typography",
+    "Layout",
+    "Elevation & Depth",
+    "Shapes",
+    "Components",
+    "Do's and Don'ts",
+  ];
+
+  for (const required of canonical) {
+    if (!sections.includes(required)) {
+      fail(`DESIGN.md: missing section "## ${required}"`);
+    }
+  }
+
+  let last = -1;
+  for (const section of sections) {
+    const index = canonical.indexOf(section);
+    if (index === -1) continue;
+    if (index < last) {
+      fail(`DESIGN.md: section "${section}" is out of canonical order`);
+    }
+    last = index;
+  }
+}
+
+function checkReadmePrompt() {
+  const path = join(root, "README.md");
+  if (!existsSync(path)) return;
+  const text = read(path);
+
+  if (!text.includes("```text")) {
+    fail("README.md: expected a copy-paste prompt code block");
+  }
+  for (const expected of [
+    "https://github.com/usagi-ai-kr/usagi",
+    "https://github.com/usagi-ai-kr/usagi/wiki",
+    "AGENTS.md",
+    "docs/glossary.md",
+  ]) {
+    if (!text.includes(expected)) {
+      fail(`README.md: prompt must mention "${expected}"`);
+    }
+  }
+}
+
+function checkContributing() {
+  const path = join(root, "CONTRIBUTING.md");
+  if (!existsSync(path)) return;
+  const text = read(path);
+
+  for (const expected of [
+    "AGENTS.md",
+    "node scripts/validate.mjs",
+    "squash merge",
+    "type:*",
+    "status:*",
+  ]) {
+    if (!text.includes(expected)) {
+      fail(`CONTRIBUTING.md: agent checklist must mention "${expected}"`);
+    }
   }
 }
 
@@ -327,6 +445,9 @@ const labelCount = checkLabels();
 checkBranchProtection();
 checkWorkflow();
 checkSkill();
+checkDesign();
+checkReadmePrompt();
+checkContributing();
 
 if (errors.length > 0) {
   console.error(`✗ ${errors.length} validation error(s):`);
