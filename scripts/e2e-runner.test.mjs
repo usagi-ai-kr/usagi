@@ -7,6 +7,12 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, appendFileSync, writeFile
 import { tmpdir, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  checkDriverPolicy,
+  detectDriver,
+  loadDriver,
+  preflightExecutable,
+} from "./e2e-runner/resolve.mjs";
 
 const runnerPath = fileURLToPath(new URL("./e2e-runner.mjs", import.meta.url));
 const validatorPath = fileURLToPath(new URL("./validate-e2e-result.mjs", import.meta.url));
@@ -351,24 +357,27 @@ test("outside a git checkout the runner fails honestly", () => {
   assert.match(run.stderr, /HEAD|git/i);
 });
 
-test("browser behavior runs when Playwright exists, otherwise the request fails closed", () => {
-  const probe = spawnSync(process.execPath, ["-e", "require.resolve('playwright')"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
-  const outDir = makeTemp("e2e-browser-");
-  if (probe.status !== 0) {
-    const run = runRunner(["--out-dir", outDir, "--adapter", "playwright"]);
-    assert.equal(run.status, 2);
-    assert.match(run.stderr, /playwright/i);
+test("browser behavior runs when a usable browser is resolved", async (t) => {
+  const usable = await usableBrowser();
+  if (usable === null) {
+    t.skip("no usable browser resolved (driver, pin, or binary absent)");
     return;
   }
+  const outDir = makeTemp("e2e-browser-");
   const run = runRunner(["--out-dir", outDir, "--adapter", "playwright", "--json"]);
   assert.equal(run.status, 0);
   const summary = JSON.parse(run.stdout);
   assert.equal(summary.valid, true);
   const result = readJson(join(outDir, "result.json"));
   assert.equal(result.result.status, "passed");
+});
+
+test("explicit playwright request fails closed when no driver resolves", () => {
+  const emptyBase = makeTemp("e2e-nodriver-");
+  const outDir = makeTemp("e2e-explicitabsent-");
+  const result = runWithBases(["--out-dir", outDir, "--adapter", "playwright"], [emptyBase]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /playwright/i);
 });
 
 function makeFakeDriver({ version, executable }) {
@@ -398,6 +407,26 @@ function runWithBases(args, bases, extraEnv = {}) {
   return runRunner(args, {
     env: { ...process.env, E2E_RUNNER_RUNTIME_DIRS: bases.join(sep), ...extraEnv },
   });
+}
+
+// Decide run-vs-skip with the production resolution path: detected +
+// policy ok + preflight ok, honoring E2E_RUNNER_RUNTIME_DIRS. Returns the
+// detected driver or null. Never launches a browser.
+async function usableBrowser() {
+  const raw = process.env.E2E_RUNNER_RUNTIME_DIRS ?? "";
+  const sep = process.platform === "win32" ? ";" : ":";
+  const extra = raw.split(sep).map((entry) => entry.trim()).filter((entry) => entry !== "");
+  const detected = detectDriver(extra);
+  if (!detected.available) return null;
+  if (checkDriverPolicy(detected) !== null) return null;
+  let driver;
+  try {
+    driver = await loadDriver(detected.entry);
+  } catch {
+    return null;
+  }
+  if (!preflightExecutable(driver.chromium).ok) return null;
+  return detected;
 }
 
 test("package present but browser absent is unavailable, not failed", () => {
@@ -442,12 +471,9 @@ test("missing-executable launch failure is unavailable, not failed", () => {
 });
 
 test("browser failure captures screenshot, trace and logs", async (t) => {
-  const probe = spawnSync(process.execPath, ["-e", "require.resolve('playwright')"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
-  if (probe.status !== 0) {
-    t.skip("playwright not installed; failure capture needs a real browser");
+  const usable = await usableBrowser();
+  if (usable === null) {
+    t.skip("no usable browser resolved; failure capture needs a real browser");
     return;
   }
   const outDir = makeTemp("e2e-failcap-");
