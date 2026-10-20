@@ -73,10 +73,8 @@ Source: [Issue #63](https://github.com/usagi-ai-kr/usagi/issues/63).
 - 자식은 부모 환경을 통째로 물려받지 않는다. 기본(`PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR`, Windows용 SystemRoot·SystemDrive·PATHEXT·COMSPEC·TEMP·TMP·USERPROFILE)에 `--env <이름>`으로 지정한 것만 더한다. 없는 이름은 값을 만들지 않고 비워 둔다. Windows 목록은 미실측이다.
 - 출력은 `--stdout-path`/`--stderr-path`가 `out-dir` 기본값보다 우선한다. 상대 경로는 runner 기동 디렉터리 기준이다. `--report-path`를 주면 보고서(JSON/human)를 파일에 쓰고 stdout은 비운다. 선언된 경로에만 쓰며 쓰기 실패는 exit 2다.
 - 암묵적 설치 없음. 없는 명령은 runner 오류다.
-- `out-dir` 밖에는 쓰지 않는다.
+- 기본은 `out-dir` 안에만 쓰고, explicit path 지정 시 그 경로에만 쓴다. 그 외에는 쓰지 않는다.
 - 구현은 [run-command.mjs](../scripts/run-command.mjs)를 본다.
-
-## 7. 후속
 
 ## 7. 후속
 
