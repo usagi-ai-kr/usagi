@@ -40,6 +40,8 @@ PRD는 "무엇을 왜", SRS는 "무엇을 검증 가능하게", ADR은 "왜 이 
 - 전체: PRD 목표 → SRS 요구사항 ID → 테스트 증거 → ADR. 한 줄이 끊기면 수용하지 않는다.
 - 경량: 이슈/ADR 수용 기준 → 테스트 증거.
 
+기계적 검사는 [requirement-traceability.md](requirement-traceability.md)와 scripts/check-requirement-trace.mjs로 수행합니다. 검사기는 ID/링크의 존재만 확인하며, 요구사항의 내용과 테스트의 충분성은 리뷰어가 판단합니다.
+
 ## 7. 한계/위험
 
 - 모든 작업을 형식 문서로 만들면 경량 경로가 죽는다. 기본은 경량이다.
