@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>E2E fixture</title>
+</head>
+<body>
+<main>
+<h1 id="title">E2E fixture</h1>
+<button id="action" type="button">run</button>
+<p id="status">idle</p>
+</main>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.body.setAttribute("data-ready", "true");
+  document.getElementById("action").addEventListener("click", () => {
+    document.getElementById("status").textContent = "done";
+  });
+});
+</script>
+</body>
+</html>

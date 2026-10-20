@@ -1,19 +1,19 @@
 # E2E 결과 계약 (E2E result contract)
 
 Source: [Issue #23](https://github.com/usagi-ai-kr/usagi/issues/23) 1단계(계약/스키마).
-관련: [#22](https://github.com/usagi-ai-kr/usagi/issues/22), [#26](https://github.com/usagi-ai-kr/usagi/issues/26), [#17](https://github.com/usagi-ai-kr/usagi/issues/17), [#14](https://github.com/usagi-ai-kr/usagi/issues/14), [#35](https://github.com/usagi-ai-kr/usagi/issues/35).
+관련: [#22](https://github.com/usagi-ai-kr/usagi/issues/22), [#26](https://github.com/usagi-ai-kr/usagi/issues/26), [#17](https://github.com/usagi-ai-kr/usagi/issues/17), [#14](https://github.com/usagi-ai-kr/usagi/issues/14), [#35](https://github.com/usagi-ai-kr/usagi/issues/35), [#64](https://github.com/usagi-ai-kr/usagi/issues/64).
 
 ## 1. 목적과 범위
 
 이 문서는 특정 모델·IDE·pane·herdr 명령에 종속되지 않는 E2E·시각 검증 **결과 계약**이다. 실행기(runner)는 어떤 도구여도 되고, 모델은 실행 프로세스가 아니라 이 계약을 호출하고 결과를 검토하는 주체다.
 
-1단계 범위는 [e2e-result.schema.json](e2e-result.schema.json)(JSON Schema draft 2020-12)과 [validate-e2e-result.mjs](../scripts/validate-e2e-result.mjs)(의존성 없는 fail-closed 검증기)뿐이다. 브라우저 실행, Playwright 도입, 시각 비교는 포함하지 않는다.
+1단계 범위는 [e2e-result.schema.json](e2e-result.schema.json)(JSON Schema draft 2020-12)과 [validate-e2e-result.mjs](../scripts/validate-e2e-result.mjs)(의존성 없는 fail-closed 검증기)뿐이다. 브라우저 실행, Playwright 도입, 시각 비교는 포함하지 않는다. 2단계 reference runner는 §9를 본다.
 
 계약의 관찰 가능한 핵심은 다음 네 가지다. 결과는 **대상 commit에 묶이고**, **viewport/DPR 환경이 고정되며**, **아티팩트 증거를 가지고**, **status가 assertion·exit_code·completeness와 일치할 때만** 유효하다. 하나라도 빠지거나 어긋나면 검증기가 거부한다.
 
 ## 2. 실행 원칙
 
-이 절은 이후 단계 runner가 따를 실행 프로토콜을 문서화한 것이며 1단계에서 구현하지 않는다.
+이 절은 runner가 따르는 실행 프로토콜이다. [e2e-runner.mjs](../scripts/e2e-runner.mjs)가 구현한다.
 
 - 브라우저 인스턴스는 기본 1개, worker concurrency는 기본 1로 시작한다. 병렬화는 계측한 뒤 명시적으로 확대한다.
 - 세션은 테스트마다 context 격리를 우선하고, 브라우저 재사용 시 쿠키·스토리지·권한·캐시 상태를 분리한다.
@@ -107,11 +107,10 @@ warning(무효 아님, 검토 대상): 아티팩트가 있는데 `--artifact-roo
 
 PR마다 도는 스모크 세트와 장시간 시각·교차 브라우저 체크포인트는 분리한다. 스모크는 짧은 behavior 시나리오만, 시각·교차 브라우저·자원 계측은 별도 체크포인트에서 실행하고 실패 결과와 수집 비용을 함께 기록한다.
 
-1단계가 CI에 추가하는 것은 검증기 자체 테스트(`node --test scripts/validate-e2e-result.test.mjs`, [ci.yml](../.github/workflows/ci.yml)의 `Test E2E result validator` 스텝)뿐이다. 브라우저 실행 잡은 추가하지 않는다.
+1단계가 CI에 추가하는 것은 검증기 자체 테스트(`node --test scripts/validate-e2e-result.test.mjs`, [ci.yml](../.github/workflows/ci.yml)의 `Test E2E result validator` 스텝)뿐이다. 브라우저 실행 잡은 추가하지 않는다. 2단계는 브라우저 없는 runner 테스트(`Test E2E reference runner (browser-free)`)만 CI에 둔다. 브라우저 실행은 로컬·수동 단계로 표시한다.
 
 ## 7. 비목표
 
-- 브라우저 runner 구현과 Playwright 도입(2단계 참고 구현).
 - 스크린샷만으로 디자인 품질을 판정하는 것. 픽셀 차이는 디자인의 좋고 나쁨이 아니다.
 - 교차 브라우저 렌더러 동일성 보증.
 - 자동 마스킹 구현. 마스킹은 runner 책임이고 검증기는 `masking` 선언만 확인한다.
@@ -120,3 +119,15 @@ PR마다 도는 스모크 세트와 장시간 시각·교차 브라우저 체크
 ## 8. 검토 절차
 
 자동 판정과 검토자 판단은 분리해 보고한다. 절차는 [e2e-evidence 스킬](../.agents/skills/e2e-evidence/SKILL.md)을 따른다. 검증기 통과는 필요조건이지 시각 품질 승인이 아니며, 검증되지 않은 항목(artifact-root 미지정, 기대값 플래그 생략)은 보고에 명시한다.
+
+## 9. Reference runner (2단계)
+
+[e2e-runner.mjs](../scripts/e2e-runner.mjs)는 정적 fixture 서버를 소유·기동하고 단일 브라우저·worker로 behavior 시나리오를 실행한다. 결과 JSON은 §3 계약을 따르고 Phase 1 검증기로 검사한다. 엄격한 결과 JSON에 없는 프로세스·자원 정보는 별도 `<runId>.run-manifest.json`에 둔다.
+
+- 어댑터: Playwright는 선택 의존이며 설치하지 않는다. 없으면 브라우저 실행을 `unavailable`로 보고하고 성공으로 표시하지 않는다. 명시 요청(`--adapter playwright`)인데 없으면 exit 2다.
+- 소유·결속: 서버는 runner가 직접 bind한 자식 프로세스다. 사전 점검 후 접속하지 않는다. 시작 토큰·PID·주소와 응답 identity(`commit_sha` 포함)를 대조한다. 포트 충돌은 외부 서버에 붙지 않고 `blocked`로 중단한다.
+- 정리: 성공·예외·timeout·신호 중단에 process tree를 정리하고 잔존을 기록한다. 부모 사망에는 서버의 자가 종료(POSIX)에 의존한다. 확실히 살리는 감시자가 없으면 부모 사망 보장을 주장하지 않는다. Windows 정리는 미검증이다.
+- 관측·증거: SHA·viewport/DPR·locale/timezone/theme·font readiness를 기록한다. 요청 조건과 기대 조건이 다르면 실행 전에 exit 2로 거부한다. 실패 시 screenshot·trace·log를 보존하고 재실행 성공으로 덮지 않는다.
+- 자원: wall time·CPU 시간·peak RSS·잔존 프로세스를 잰다. 잴 수 없는 값은 0이 아니라 null/`unavailable`로 기록한다. Windows·Alpine은 미검증으로 표시한다.
+- 종료 코드: 검증 통과 + passed면 `0`, 실행됐으나 통과가 아니면 `1`, 실행 전 설정·기동 오류면 `2`, 신호 중단은 `128+n`이다.
+- 브라우저 테스트는 별도 로컬·수동 단계다. core CI에는 브라우저 없는 테스트만 둔다.

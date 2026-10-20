@@ -26,6 +26,7 @@
 - 구조·테스트 계약: [architecture-contract.md](docs/architecture-contract.md)
 - 테스트 게이트: [test-gate-contract.md](docs/test-gate-contract.md)
 - E2E·시각 증거: [e2e-contract.md](docs/e2e-contract.md)
+- E2E 실행: [e2e-contract.md](docs/e2e-contract.md) §9 runner는 fixture 서버를 소유하고 브라우저 없이 passed를 내지 않습니다.
 - 실행 증거: [execution-evidence.md](docs/execution-evidence.md)
 - 클라이언트 설정: [client-integration.md](docs/client-integration.md)
 - 게시 전 검증 훅: [client-integration.md](docs/client-integration.md)의 PreToolUse 훅이 차단하면 우회 사유 없이 진행하지 않습니다.
