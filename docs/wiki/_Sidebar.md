@@ -3,6 +3,7 @@
 - [Home](Home)
 - [하네스 엔지니어링](What-is-Harness-Engineering)
 - [운영 플로우](Workflows)
+- [하네스 시작하기](Harness-Starter)
 - [Glossary](Glossary)
   - [Orchestration](Glossary-Orchestration)
   - [Reliability](Glossary-Reliability)
@@ -10,4 +11,5 @@
   - [Testing & Quality](Glossary-Testing-Quality)
   - [Documentation & Operations](Glossary-Docs-Operations)
 - [README](https://github.com/usagi-ai-kr/usagi#readme)
+- [프롬프트](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)
 - [Changelog](https://github.com/usagi-ai-kr/usagi/blob/main/CHANGELOG.md)

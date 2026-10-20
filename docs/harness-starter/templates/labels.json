@@ -1,0 +1,53 @@
+{
+  "rule": "Every issue and pull request gets exactly one type:* label and exactly one status:* label. Do not add two values from the same dimension.",
+  "dimensions": {
+    "type": [
+      "type:docs",
+      "type:feature",
+      "type:bug",
+      "type:chore"
+    ],
+    "status": [
+      "status:proposal",
+      "status:ready",
+      "status:blocked"
+    ]
+  },
+  "labels": [
+    {
+      "name": "type:docs",
+      "color": "0075ca",
+      "description": "문서·제안서·용어집 변경"
+    },
+    {
+      "name": "type:feature",
+      "color": "0e8a16",
+      "description": "새 기능 또는 도구 구현"
+    },
+    {
+      "name": "type:bug",
+      "color": "d73a4a",
+      "description": "결함·회귀 수정"
+    },
+    {
+      "name": "type:chore",
+      "color": "6e7781",
+      "description": "CI·설정·유지보수"
+    },
+    {
+      "name": "status:proposal",
+      "color": "fbca04",
+      "description": "제안·논의 중, 아직 병합 준비 아님"
+    },
+    {
+      "name": "status:ready",
+      "color": "2ea44f",
+      "description": "리뷰·병합 가능"
+    },
+    {
+      "name": "status:blocked",
+      "color": "b60205",
+      "description": "선행 조건·결정 대기로 보류"
+    }
+  ]
+}

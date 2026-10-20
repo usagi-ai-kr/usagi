@@ -4,12 +4,22 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Added
+
+- Harness starter guide and minimal templates for `AGENTS.md`, `CONTRIBUTING.md`, labels, branch protection, and CI.
+- Copy-paste prompt library (`PROMPTS.md`) for adoption, review, triage, glossary, release, and repository audit workflows.
+- External contribution policy: this is an owner-operated project; external agent contributions are not accepted.
+
+### Changed
+
+- README and Wiki now point readers to the starter pack and prompt library while keeping the human-friendly flow.
+
 ## [0.1.1] - 2026-10-20
 
 ### Changed
 
-- Reduced `AGENTS.md` to a concise router and moved detailed rules to `CONTRIBUTING.md`, skills, `DESIGN.md`, and `docs/rule-file-guidelines.md`.
-- Added rule-file length/word budget checks and research notes in `docs/rule-file-guidelines.md`.
+- Reduced `AGENTS.md` to a concise navigation file and moved detailed rules to `CONTRIBUTING.md`, skills, `DESIGN.md`, and `docs/rule-file-guidelines.md`.
+- Added rule-file length and word limit checks and research notes in `docs/rule-file-guidelines.md`.
 
 ## [0.1.0] - 2026-10-20
 
