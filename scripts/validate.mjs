@@ -96,7 +96,7 @@ if (existsSync(claudePath)) {
 
 function walkMarkdown(dir, output = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === ".git" || entry.name === "node_modules") continue;
+    if (entry.name === ".git" || entry.name === "node_modules" || entry.name === "tmp") continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
       walkMarkdown(path, output);
