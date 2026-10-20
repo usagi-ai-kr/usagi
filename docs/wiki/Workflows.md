@@ -38,6 +38,13 @@ node scripts/validate.mjs
 ./scripts/sync-wiki.sh
 ```
 
-## 5. 사람이 읽는 순서
+## 5. 릴리스
+
+1. `VERSION`을 올리고 `CHANGELOG.md`의 `[Unreleased]`를 새 버전 섹션으로 옮깁니다.
+2. PR을 열고 `validate` CI를 통과시킨 뒤 squash merge합니다.
+3. `main`에서 `vX.Y.Z` 태그를 만들고 push합니다.
+4. `Release` workflow가 Changelog에서 릴리스 노트를 추출해 GitHub Release를 만듭니다.
+
+## 6. 사람이 읽는 순서
 
 [Home](Home) → [하네스 엔지니어링이란?](What-is-Harness-Engineering) → [운영 플로우](Workflows) → [Glossary](Glossary)

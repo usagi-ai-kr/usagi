@@ -1,6 +1,21 @@
-# CONTRIBUTING.md — agent checklist
+# CONTRIBUTING.md — AI contribution guide
 
-이 파일은 에이전트용 기여 체크리스트입니다. 전체 규칙의 원본은 [`AGENTS.md`](AGENTS.md)입니다. 사람이 읽는 문서는 `README.md`와 GitHub Wiki에 있습니다.
+이 문서는 AI 에이전트가 이 저장소에 기여할 때 따르는 가이드입니다. 사람이 읽는 문서는 `README.md`와 GitHub Wiki에 있습니다. 전체 규칙의 원본은 [`AGENTS.md`](AGENTS.md)입니다.
+
+## 0. 복붙 프롬프트
+
+```text
+https://github.com/usagi-ai-kr/usagi
+
+이 저장소는 에이전트 운영 경험과 공통 규약을 모으는 공간이다.
+저장소가 로컬에 있으면 그 경로를, 없으면 위 GitHub 링크의 README.md, AGENTS.md, CONTRIBUTING.md, docs/glossary.md를 읽어라.
+
+앞으로 내가 쓰는 낯선 용어는 docs/glossary/<category>.md의 정의와 출처를 근거로 쉬운 말로 설명해라.
+용어집에 없는 용어는 docs/glossary/categories.json에서 카테고리를 고르고, 기존 형식으로 항목 초안과 참고 출처를 제안해라.
+문서를 바꾸기 전에 계획을 보여주고, 승인 후 node scripts/build-glossary-index.mjs와 node scripts/validate.mjs를 실행해라.
+Wiki는 사람이 읽는 문서이므로 운영 규칙을 추가하지 말고, 게시가 필요하면 ./scripts/sync-wiki.sh를 사용해라.
+디자인 변경은 DESIGN.md, 스킬 변경은 Agent Skills 스펙을 따른다.
+```
 
 ## 1. 시작 전
 
@@ -52,7 +67,20 @@ gh pr merge <number> --squash --match-head-commit "$(gh pr view <number> --json 
 - 원본을 수정한 뒤 `./scripts/sync-wiki.sh`로 게시합니다.
 - 게시 전 차이는 `./scripts/sync-wiki.sh --check`로 확인합니다.
 
-## 6. 금지
+## 6. 버전과 릴리스
+
+- [Semantic Versioning](https://semver.org/)을 따릅니다. `VERSION`이 현재 버전의 원본이며 `0.1.x`부터 시작합니다.
+- 모든 사용자 가시 변경은 `CHANGELOG.md`의 `[Unreleased]`에 기록합니다.
+- 릴리스 순서:
+  1. `VERSION`을 올리고 `CHANGELOG.md`의 `[Unreleased]`를 `[x.y.z] - YYYY-MM-DD`로 옮깁니다.
+  2. PR을 열고 `validate` CI를 통과시킵니다.
+  3. `main`에 squash merge합니다.
+  4. `main`에서 annotated tag를 만듭니다: `git tag -a vX.Y.Z -m "usagi vX.Y.Z" && git push origin vX.Y.Z`.
+  5. `Release` workflow가 `CHANGELOG.md`에서 해당 버전 섹션을 추출해 GitHub Release를 만듭니다.
+- 마일스톤은 `vX.Y.Z` 이름을 사용하고 릴리스 후 닫습니다.
+- 태그를 옮기거나 삭제하지 않습니다.
+
+## 7. 금지
 
 - `main` 직접 push 또는 force push
 - 위키 직접 편집

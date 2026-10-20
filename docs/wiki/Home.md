@@ -19,5 +19,6 @@
 ## 저장소
 
 - [README](https://github.com/usagi-ai-kr/usagi#readme)
+- [Changelog](https://github.com/usagi-ai-kr/usagi/blob/main/CHANGELOG.md)
 - [Issues](https://github.com/usagi-ai-kr/usagi/issues)
 - [Pull requests](https://github.com/usagi-ai-kr/usagi/pulls)
