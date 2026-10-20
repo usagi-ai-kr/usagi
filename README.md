@@ -2,28 +2,12 @@
 
 Unsupervised Space for Agent Guidelines & Infrastructure.
 
-[![CI](https://github.com/usagi-ai-kr/usagi/actions/workflows/ci.yml/badge.svg)](https://github.com/usagi-ai-kr/usagi/actions/workflows/ci.yml)
+에이전트 운영 경험과 공통 규약을 모으는 공간입니다. 낯선 용어는 [Glossary (용어집)](docs/glossary.md)에서 찾습니다. 사람이 읽는 문서는 [Wiki](https://github.com/usagi-ai-kr/usagi/wiki)에 있습니다.
 
-## Start here
-
-- [Glossary (용어집)](docs/glossary.md) — Issue #1 / PR #2에 나오는 낯선 용어를 찾는 사전. 위키에도 게시됩니다.
-- [Contributing](CONTRIBUTING.md) — 레이블, 브랜치 보호, CI, 위키 동기화 규칙.
-- [Issue #1 — Herdr 멀티 에이전트 하네스](https://github.com/usagi-ai-kr/usagi/issues/1)
-- [PR #2 — Multi-agent orchestration contract](https://github.com/usagi-ai-kr/usagi/pull/2)
-
-## Repository layout
+## 이 저장소 활용하기
 
 ```text
-docs/
-  glossary.md                 # 용어집 원본
-  wiki/                       # 위키에 게시할 Home / Sidebar 원본
-.github/
-  labels.json                 # MECE 레이블 정의 (as code)
-  branch-protection.json      # main 브랜치 보호 설정
-  workflows/ci.yml            # 문서·용어집·레이블 검증
-scripts/
-  validate.mjs                # 링크·용어집·레이블 검사
-  sync-labels.sh              # labels.json -> GitHub labels
-  sync-wiki.sh                # docs -> GitHub wiki
-  apply-repo-policy.sh        # 병합 설정 + main 브랜치 보호 적용
+이 저장소의 docs/glossary.md를 읽고, 내가 쓰는 낯선 용어를 찾아 쉬운 말로 설명해줘.
+용어가 없으면 docs/glossary/<category>.md에 추가할 초안과 참고 출처를 제안해줘.
+작업 규칙은 AGENTS.md를 따르고, 변경 후 node scripts/validate.mjs로 검증해줘.
 ```
