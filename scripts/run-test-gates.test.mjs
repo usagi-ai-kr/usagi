@@ -142,6 +142,13 @@ test("Red to Green: a failing gate stays failed and a later passing gate is reco
   assert.equal(red.result.status, 1);
   assert.equal(red.report.gates[0].status, "fail");
 
+  // The failure must survive on disk, not only in the in-memory report.
+  const redOnDisk = JSON.parse(
+    readFileSync(join(evidence, `${red.report.run_id}.report.json`), "utf8"),
+  );
+  assert.equal(redOnDisk.gates[0].status, "fail");
+  assert.equal(redOnDisk.summary.status, "failed");
+
   const green = runJson([
     "--config",
     passing,
@@ -152,8 +159,11 @@ test("Red to Green: a failing gate stays failed and a later passing gate is reco
   assert.equal(green.result.status, 0);
   assert.equal(green.report.gates[0].status, "pass");
   assert.notEqual(red.report.run_id, green.report.run_id);
-  assert.ok(readFileSync(red.report.gates[0].stdout_ref, "utf8") !== undefined);
-  assert.equal(red.report.gates[0].status, "fail");
+  const redAgain = JSON.parse(
+    readFileSync(join(evidence, `${red.report.run_id}.report.json`), "utf8"),
+  );
+  assert.equal(redAgain.gates[0].status, "fail");
+  assert.equal(redAgain.gates[0].exit_code, 1);
 });
 
 test("--only runs the selected gate and skips the rest with a reason", () => {
@@ -179,8 +189,8 @@ test("--only runs the selected gate and skips the rest with a reason", () => {
 test("when skip and env conditions produce distinct statuses", () => {
   const dir = makeTemp("gates-when-");
   const config = writeConfig(dir, [
-    gate({ id: "skipped", when: "skip", reason: "적용 대상 없음" }),
-    gate({ id: "conditional", level: "slice", when: "env:GATES_OPTIONAL" }),
+    gate({ id: "skipped", required: false, when: "skip", reason: "적용 대상 없음" }),
+    gate({ id: "conditional", level: "slice", required: false, when: "env:GATES_OPTIONAL" }),
   ]);
   const { result, report } = runJson(["--config", config, "--json"], {
     env: { ...process.env, GATES_OPTIONAL: undefined },
@@ -198,6 +208,84 @@ test("when skip and env conditions produce distinct statuses", () => {
     withEnv.report.gates.map((item) => [item.id, item]),
   );
   assert.equal(byId2.conditional.status, "pass");
+});
+
+test("a required gate that did not run makes the run incomplete and exits 2", () => {
+  const dir = makeTemp("gates-required-notrun-");
+  const config = writeConfig(dir, [
+    gate({ id: "unit" }),
+    gate({ id: "integration", level: "integration", required: true }),
+  ]);
+
+  const excluded = runJson(["--config", config, "--only", "unit", "--json"]);
+  assert.equal(excluded.result.status, 2);
+  assert.equal(excluded.report.status, "incomplete");
+  assert.equal(excluded.report.summary.status, "incomplete");
+  assert.equal(excluded.report.summary.required_not_run, 1);
+  assert.equal(excluded.report.gates[1].status, "skipped");
+
+  const skippedByConfig = writeConfig(
+    dir,
+    [gate({ id: "unit" }), gate({ id: "integration", level: "integration", when: "skip", reason: "미적용" })],
+    {},
+    "skip.json",
+  );
+  const skipped = runJson(["--config", skippedByConfig, "--json"]);
+  assert.equal(skipped.result.status, 2);
+  assert.equal(skipped.report.summary.status, "incomplete");
+
+  const conditional = writeConfig(
+    dir,
+    [gate({ id: "unit" }), gate({ id: "integration", level: "integration", when: "env:GATES_REQUIRED" })],
+    {},
+    "env.json",
+  );
+  const unmet = runJson(["--config", conditional, "--json"], {
+    env: { ...process.env, GATES_REQUIRED: undefined },
+  });
+  assert.equal(unmet.result.status, 2);
+  assert.equal(unmet.report.summary.status, "incomplete");
+  assert.equal(unmet.report.gates[1].status, "not_applicable");
+});
+
+test("an optional gate that did not run keeps the run green", () => {
+  const dir = makeTemp("gates-optional-skip-");
+  const config = writeConfig(dir, [
+    gate({ id: "unit" }),
+    gate({ id: "regression", level: "regression", required: false, when: "skip", reason: "선택" }),
+  ]);
+  const { result, report } = runJson(["--config", config, "--json"]);
+  assert.equal(result.status, 0);
+  assert.equal(report.status, "complete");
+  assert.equal(report.summary.status, "ok");
+  assert.equal(report.summary.required_not_run, 0);
+});
+
+test("a timeout_ms outside the setTimeout range exits 2", () => {
+  const dir = makeTemp("gates-timeout-range-");
+  const tooBig = writeConfig(dir, [gate({ timeout_ms: 2 ** 40 })], {}, "big.json");
+  assert.equal(runRunner(["--config", tooBig, "--json"]).status, 2);
+  const boundary = writeConfig(
+    dir,
+    [gate({ timeout_ms: 2147483647 })],
+    {},
+    "boundary.json",
+  );
+  const result = runJson(["--config", boundary, "--json"]);
+  assert.equal(result.result.status, 0);
+  assert.equal(result.report.gates[0].status, "pass");
+});
+
+test("output beyond the 1 MiB cap is flagged as truncated", () => {
+  const dir = makeTemp("gates-truncated-");
+  const config = writeConfig(dir, [
+    gate({ command: ["node", "-e", "process.stdout.write('x'.repeat(1200000))"] }),
+  ]);
+  const { result, report } = runJson(["--config", config, "--json"]);
+  assert.equal(result.status, 0);
+  assert.equal(report.gates[0].stdout_truncated, true);
+  assert.equal(report.gates[0].stdout_bytes, 1048576);
+  assert.equal(report.gates[0].stderr_truncated, false);
 });
 
 test("a gate that runs too long is reported as timeout", () => {

@@ -17,11 +17,11 @@ node scripts/run-test-gates.mjs --config <file> [--evidence-dir <dir>] [--only <
 
 - `--config`은 필수입니다. JSON 설정 파일 경로입니다.
 - `--evidence-dir`를 주면 게이트별 stdout/stderr 로그와 리포트를 그 디렉터리에 씁니다.
-- `--only`는 반복 가능합니다. 수준(`unit`)이나 게이트 id로 걸러 냅니다. 걸러진 게이트는 `skipped`로 기록됩니다.
+- `--only`는 반복 가능합니다. 수준(`unit`)이나 게이트 id로 걸러 냅니다. 걸러진 게이트는 `skipped`로 기록되고, **필수 게이트를 걸러 내면 그 실행은 `incomplete`·exit 2**입니다. CI의 fast 경로처럼 선택 실행을 하려면 제외되는 게이트가 선택 게이트여야 합니다.
 - `--expected-sha`는 실행 전 HEAD와 대조합니다. 다르면 게이트를 하나도 실행하지 않고 exit 2입니다.
 - `--json`은 리포트만 stdout에 씁니다.
 
-종료 코드는 세 가지입니다. `0`은 필수 게이트가 모두 통과한 경우입니다(선택 게이트 실패는 기록만 합니다). `1`은 필수 게이트 실패·타임아웃, `2`는 사용법·설정·SHA·증거 결속 오류입니다.
+종료 코드는 세 가지입니다. `0`은 필수 게이트가 모두 통과한 경우입니다(선택 게이트 실패는 기록만 합니다). `1`은 필수 게이트 실패·타임아웃, `2`는 사용법·설정·SHA·증거 결속 오류와 **필수 게이트가 실행되지 않은 경우**입니다. `2`는 테스트 실패가 아니라 선택·설정 문제라는 뜻입니다.
 
 ## 2. 설정 스키마
 
@@ -47,7 +47,7 @@ node scripts/run-test-gates.mjs --config <file> [--evidence-dir <dir>] [--only <
 - `level`: `unit`, `slice`, `integration`, `regression` 중 하나입니다.
 - `command`: argv 배열입니다. shell을 쓰지 않습니다. 빈 배열과 빈 문자열은 설정 오류입니다.
 - `required`: 필수 게이트가 실패하면 실행 전체가 실패합니다. 선택 게이트 실패는 기록만 합니다.
-- `timeout_ms`: 양의 정수입니다. 초과하면 프로세스 트리를 죽이고 `timeout`으로 기록합니다.
+- `timeout_ms`: 1–2147483647의 정수입니다. 범위를 벗어나면 설정 오류입니다. 초과하면 프로세스 트리를 죽이고 `timeout`으로 기록합니다.
 - `when`: `always`, `skip`, `env:NAME` 중 하나입니다. `skip`은 `reason`이 필요합니다.
 - `reason`: `skip`일 때 남는 사유입니다.
 
@@ -60,10 +60,12 @@ node scripts/run-test-gates.mjs --config <file> [--evidence-dir <dir>] [--only <
 | `pass` | 명령이 exit 0 | 없음 |
 | `fail` | 명령이 0 아닌 exit | 필수 게이트면 exit 1 |
 | `timeout` | `timeout_ms` 초과 | 필수 게이트면 exit 1 |
-| `skipped` | `when: skip` 또는 `--only`로 제외 | 없음 |
-| `not_applicable` | `when: env:NAME`인데 NAME이 없음 | 없음 |
+| `skipped` | `when: skip` 또는 `--only`로 제외 | 선택 게이트면 없음, **필수 게이트면 exit 2** |
+| `not_applicable` | `when: env:NAME`인데 NAME이 없음 | 선택 게이트면 없음, **필수 게이트면 exit 2** |
 
 `skipped`와 `not_applicable`은 서로 다른 상태입니다. `skipped`는 사람이 정한 제외고, `not_applicable`은 환경 조건이 맞지 않아 실행하지 않은 경우입니다.
+
+필수 게이트가 실행되지 않으면 그 실행은 통과가 아닙니다. 리포트 `status`와 `summary.status`가 `incomplete`가 되고 exit 2입니다. 수용 실행은 필수 게이트를 제외하면 안 됩니다. `required: true`인 게이트는 의도적으로 미완성으로 둘 것이 아니라 `when: always`로 씁니다.
 
 ## 4. SHA 결속
 
@@ -71,14 +73,15 @@ node scripts/run-test-gates.mjs --config <file> [--evidence-dir <dir>] [--only <
 - 리포트에는 설정 파일의 `config_sha256`도 함께 남깁니다.
 - 실행 중 HEAD나 staged tree가 바뀌면 리포트는 `incomplete`가 되고 exit 2입니다. 이전 증거를 유효한 것으로 보이지 않습니다.
 - git 저장소가 아니거나 커밋이 없으면 결속 오류로 exit 2입니다.
+- `git write-tree`는 staged tree 해시를 만들려고 `.git` 오브젝트 저장소에 트리 객체를 씁니다. 워킹 트리와 인덱스는 건드리지 않습니다.
 
 ## 5. 리포트
 
 `schema_version`, `run_id`, `config`, `config_sha256`, `source_commit`, `staged_tree_sha`, `environment`(os/arch/node), `started_at`, `duration_ms`, `gates[]`, `summary`, `status`를 냅니다.
 
-게이트 결과는 `id`, `level`, `required`, `status`, `exit_code`, `duration_ms`, `command`, `stdout_ref`, `stderr_ref`, `reason`을 담습니다. `stdout_ref`와 `stderr_ref`는 `--evidence-dir`를 주었을 때만 채워집니다.
+게이트 결과는 `id`, `level`, `required`, `status`, `exit_code`, `duration_ms`, `command`, `stdout_ref`, `stderr_ref`, `stdout_bytes`, `stderr_bytes`, `stdout_truncated`, `stderr_truncated`, `reason`을 담습니다. `stdout_ref`와 `stderr_ref`는 `--evidence-dir`를 주었을 때만 채워집니다. 스트림당 1,048,576바이트까지만 저장하고, 잘리면 `stdout_truncated`·`stderr_truncated`가 참이 됩니다.
 
-`summary`는 `total`, `passed`, `failed`, `timed_out`, `skipped`, `not_applicable`, `required_failed`, `optional_failed`, `status`를 담습니다. `status`는 `ok`, `failed`, `incomplete` 중 하나입니다.
+`summary`는 `total`, `passed`, `failed`, `timed_out`, `skipped`, `not_applicable`, `required_failed`, `optional_failed`, `required_not_run`, `status`를 담습니다. `status`는 `ok`, `failed`, `incomplete` 중 하나입니다. `required_not_run`은 실행되지 않은 필수 게이트 수입니다. 리포트 최상위 `status`는 `complete`·`incomplete` 중 하나이며, 결속이 깨졌거나 필수 게이트가 실행되지 않으면 `incomplete`입니다.
 
 ## 6. Red→Green 증거 형식
 

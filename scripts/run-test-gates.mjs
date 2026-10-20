@@ -36,7 +36,7 @@ Options:
 Exit codes:
   0  all required gates passed (optional failures are counted, not fatal)
   1  a required gate failed or timed out
-  2  usage, config, SHA binding or evidence binding error
+  2  usage, config, SHA binding, evidence binding error, or a required gate that did not run
 `;
 
 const LEVELS = ["unit", "slice", "integration", "regression"];
@@ -44,6 +44,8 @@ const GATE_STATUSES = ["pass", "fail", "timeout", "skipped", "not_applicable"];
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const SHA_PATTERN = /^[0-9a-f]{40}$/i;
 const MAX_OUTPUT_BYTES = 1048576;
+// setTimeout clamps values above 2^31-1 to ~1ms, so the range is bounded.
+const MAX_TIMEOUT_MS = 2147483647;
 
 class UsageError extends Error {}
 
@@ -158,8 +160,10 @@ function parseConfig(raw, configPath) {
     if (typeof gate.required !== "boolean") {
       throw new UsageError(`${where}: required must be a boolean`);
     }
-    if (!Number.isInteger(gate.timeout_ms) || gate.timeout_ms <= 0) {
-      throw new UsageError(`${where}: timeout_ms must be a positive integer`);
+    if (!Number.isInteger(gate.timeout_ms) || gate.timeout_ms <= 0 || gate.timeout_ms > MAX_TIMEOUT_MS) {
+      throw new UsageError(
+        `${where}: timeout_ms must be an integer between 1 and ${MAX_TIMEOUT_MS}`,
+      );
     }
     const when = parseWhen(gate.when, where);
     if (when.kind === "skip" && (typeof gate.reason !== "string" || gate.reason.trim() === "")) {
@@ -242,6 +246,8 @@ function runGate(command, { cwd, timeoutMs }) {
     const stderrChunks = [];
     let stdoutSize = 0;
     let stderrSize = 0;
+    let stdoutTruncated = false;
+    let stderrTruncated = false;
 
     const timer = setTimeout(() => {
       timedOut = true;
@@ -253,12 +259,16 @@ function runGate(command, { cwd, timeoutMs }) {
       if (stdoutSize + chunk.length <= MAX_OUTPUT_BYTES) {
         stdoutChunks.push(chunk);
         stdoutSize += chunk.length;
+      } else {
+        stdoutTruncated = true;
       }
     });
     child.stderr.on("data", (chunk) => {
       if (stderrSize + chunk.length <= MAX_OUTPUT_BYTES) {
         stderrChunks.push(chunk);
         stderrSize += chunk.length;
+      } else {
+        stderrTruncated = true;
       }
     });
 
@@ -275,6 +285,8 @@ function runGate(command, { cwd, timeoutMs }) {
         timedOut,
         stdout: Buffer.concat(stdoutChunks),
         stderr: Buffer.concat(stderrChunks),
+        stdoutTruncated,
+        stderrTruncated,
         startedAt,
         finishedAt: Date.now(),
       });
@@ -303,6 +315,8 @@ async function runGates(gates, { cwd, evidenceDir, runId, only }) {
       stderr_ref: null,
       stdout_bytes: 0,
       stderr_bytes: 0,
+      stdout_truncated: false,
+      stderr_truncated: false,
       reason: null,
     };
 
@@ -363,6 +377,8 @@ async function runGates(gates, { cwd, evidenceDir, runId, only }) {
       stderr_ref: stderrRef,
       stdout_bytes: stdout.length,
       stderr_bytes: stderr.length,
+      stdout_truncated: outcome.stdoutTruncated,
+      stderr_truncated: outcome.stderrTruncated,
       reason: outcome.timedOut ? `timed out after ${gate.timeoutMs}ms` : null,
     });
   }
@@ -379,6 +395,7 @@ function summarize(gates) {
     not_applicable: 0,
     required_failed: 0,
     optional_failed: 0,
+    required_not_run: 0,
     status: "ok",
   };
   for (const gate of gates) {
@@ -391,10 +408,18 @@ function summarize(gates) {
       summary.timed_out += 1;
       if (gate.required) summary.required_failed += 1;
       else summary.optional_failed += 1;
-    } else if (gate.status === "skipped") summary.skipped += 1;
-    else if (gate.status === "not_applicable") summary.not_applicable += 1;
+    } else if (gate.status === "skipped") {
+      summary.skipped += 1;
+      if (gate.required) summary.required_not_run += 1;
+    } else if (gate.status === "not_applicable") {
+      summary.not_applicable += 1;
+      if (gate.required) summary.required_not_run += 1;
+    }
   }
   if (summary.required_failed > 0) summary.status = "failed";
+  // A required gate that never ran is not a pass. The run is incomplete and
+  // must not be presented as green.
+  else if (summary.required_not_run > 0) summary.status = "incomplete";
   return summary;
 }
 
@@ -407,7 +432,7 @@ function emitHuman(report) {
     );
   }
   console.log(
-    `test-gates: ${report.summary.status} (${report.summary.total} gate(s), ${report.summary.passed} passed, ${report.summary.failed} failed, ${report.summary.timed_out} timed out, ${report.summary.skipped} skipped, ${report.summary.not_applicable} not applicable)`,
+    `test-gates: ${report.summary.status} (${report.summary.total} gate(s), ${report.summary.passed} passed, ${report.summary.failed} failed, ${report.summary.timed_out} timed out, ${report.summary.skipped} skipped, ${report.summary.not_applicable} not applicable, ${report.summary.required_not_run} required gate(s) not run)`,
   );
   console.log(
     `  commit=${report.source_commit} staged_tree=${report.staged_tree_sha} config_sha256=${report.config_sha256}`,
@@ -486,7 +511,7 @@ async function run(argv) {
 
   const headAfter = gitOutput(["rev-parse", "HEAD"], cwd);
   const stagedAfter = gitOutput(["write-tree"], cwd);
-  const complete = headAfter === binding.commit && stagedAfter === binding.staged;
+  const bindingIntact = headAfter === binding.commit && stagedAfter === binding.staged;
 
   const report = {
     schema_version: 1,
@@ -500,13 +525,20 @@ async function run(argv) {
     duration_ms: Date.now() - startMs,
     gates,
     summary: summarize(gates),
-    status: complete ? "complete" : "incomplete",
+    status: bindingIntact ? "complete" : "incomplete",
   };
 
-  if (!complete) {
+  const requiredNotRun = report.summary.required_not_run > 0;
+  if (!bindingIntact) {
     report.summary.status = "incomplete";
     report.error =
       "HEAD or the staged tree changed during the run; the recorded evidence is not valid for the current tree";
+  } else if (requiredNotRun) {
+    // A required gate that was excluded or skipped leaves the contract
+    // uncovered, so the run is incomplete rather than green.
+    report.status = "incomplete";
+    report.error =
+      "a required gate was not run; acceptance runs must not exclude required gates";
   }
 
   if (evidenceDir !== null) {
@@ -528,8 +560,12 @@ async function run(argv) {
     emitHuman(report);
   }
 
-  if (!complete) {
+  if (!bindingIntact) {
     console.error("error: HEAD or the staged tree changed during the run");
+    return 2;
+  }
+  if (requiredNotRun) {
+    console.error("error: a required gate was not run; the run is incomplete");
     return 2;
   }
   return report.summary.status === "failed" ? 1 : 0;
