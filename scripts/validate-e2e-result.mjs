@@ -15,7 +15,7 @@
  * The validator only reads files: it never writes and installs nothing.
  */
 import { createHash } from "node:crypto";
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, resolve, sep } from "node:path";
 import process from "node:process";
 
@@ -528,6 +528,22 @@ function validateResult(result, expectations) {
 
   if (expectations.artifactRoot !== null) {
     const rootResolved = resolve(expectations.artifactRoot);
+    // Fail closed: if the root itself cannot be resolved, no artifact may
+    // pass. Unreachable in normal runs (run() already required the root to
+    // be a directory), but the branch must not silently skip containment.
+    let rootReal = null;
+    try {
+      rootReal = realpathSync(rootResolved);
+    } catch {
+      rootReal = null;
+    }
+    if (rootReal === null) {
+      err(
+        "artifact_root_unresolved",
+        "artifacts",
+        "cannot resolve --artifact-root to a real path; no artifact can be verified",
+      );
+    } else {
     for (const { artifactPath, basePath, declaredSha, declaredSize } of artifactChecks) {
       const resolved = resolve(rootResolved, artifactPath);
       if (resolved !== rootResolved && !resolved.startsWith(rootResolved + sep)) {
@@ -538,9 +554,30 @@ function validateResult(result, expectations) {
         );
         continue;
       }
+      // A symlink inside the root may still point outside it. Resolve the
+      // real path and require containment as well. Missing files keep the
+      // "not found" error; realpath failures must never crash the run.
+      let real = null;
+      try {
+        real = realpathSync(resolved);
+      } catch {
+        real = null;
+      }
+      if (real === null) {
+        err("artifact_missing", `${basePath}.path`, `artifact file not found: ${artifactPath}`);
+        continue;
+      }
+      if (real !== rootReal && !real.startsWith(rootReal + sep)) {
+        err(
+          "artifact_outside_root",
+          `${basePath}.path`,
+          `artifact real path escapes --artifact-root: ${artifactPath}`,
+        );
+        continue;
+      }
       let stats;
       try {
-        stats = statSync(resolved);
+        stats = statSync(real);
       } catch {
         err("artifact_missing", `${basePath}.path`, `artifact file not found: ${artifactPath}`);
         continue;
@@ -560,7 +597,7 @@ function validateResult(result, expectations) {
       if (declaredSha !== null) {
         let content;
         try {
-          content = readFileSync(resolved);
+          content = readFileSync(real);
         } catch {
           err("artifact_unreadable", `${basePath}.path`, `artifact file cannot be read: ${artifactPath}`);
           continue;
@@ -574,6 +611,7 @@ function validateResult(result, expectations) {
           );
         }
       }
+    }
     }
   }
 
