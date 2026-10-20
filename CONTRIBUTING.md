@@ -1,6 +1,6 @@
 # CONTRIBUTING.md — AI contribution guide
 
-이 문서는 AI 에이전트가 이 저장소에 기여할 때 따르는 가이드입니다. 사람이 읽는 문서는 `README.md`와 GitHub Wiki에 있습니다. 전체 규칙의 원본은 [`AGENTS.md`](AGENTS.md)입니다.
+이 문서는 AI 에이전트가 이 저장소에 기여할 때 따르는 상세 가이드입니다. 사람이 읽는 문서는 `README.md`와 GitHub Wiki에 있습니다. [`AGENTS.md`](AGENTS.md)는 라우터이며, 규칙 파일 예산과 근거는 [`docs/rule-file-guidelines.md`](docs/rule-file-guidelines.md)를 따릅니다.
 
 ## 0. 복붙 프롬프트
 

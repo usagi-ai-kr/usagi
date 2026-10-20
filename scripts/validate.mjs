@@ -46,6 +46,7 @@ const requiredFiles = [
   "CHANGELOG.md",
   "docs/glossary.md",
   "docs/glossary/categories.json",
+  "docs/rule-file-guidelines.md",
   "docs/wiki/Home.md",
   "docs/wiki/_Sidebar.md",
   "docs/wiki/What-is-Harness-Engineering.md",
@@ -447,6 +448,32 @@ function checkContributing() {
   }
 }
 
+function checkAgentsBudget() {
+  const path = join(root, "AGENTS.md");
+  if (!existsSync(path)) return;
+  const text = read(path);
+  const lineCount = text.split(/\r?\n/).length;
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+
+  if (lineCount > 100) {
+    fail(`AGENTS.md: ${lineCount} lines exceeds the 100-line budget`);
+  }
+  if (wordCount > 800) {
+    fail(`AGENTS.md: ${wordCount} words exceeds the 800-word budget`);
+  }
+  for (const expected of [
+    "CONTRIBUTING.md",
+    "docs/glossary.md",
+    "DESIGN.md",
+    ".agents/skills/glossary/SKILL.md",
+    "docs/rule-file-guidelines.md",
+  ]) {
+    if (!text.includes(expected)) {
+      fail(`AGENTS.md: router must link "${expected}"`);
+    }
+  }
+}
+
 function checkVersion() {
   const versionPath = join(root, "VERSION");
   const changelogPath = join(root, "CHANGELOG.md");
@@ -494,6 +521,7 @@ checkSkill();
 checkDesign();
 checkReadme();
 checkContributing();
+checkAgentsBudget();
 checkVersion();
 
 if (errors.length > 0) {
