@@ -56,7 +56,7 @@ https://github.com/usagi-ai-kr/usagi/blob/main/docs/multi-agent-orchestration-co
 ## 5. 막힌 작업 정리
 
 ```text
-https://github.com/usagi-ai-kr/usagi/blob/main/docs/harness-triage-evidence-assurance.md 의 triage 기준을 참고해 이 작업의 상태를 정리해줘.
+https://github.com/usagi-ai-kr/usagi/blob/main/docs/harness-triage-evidence-assurance.md 의 막힌 작업 정리 기준을 참고해 이 작업의 상태를 정리해줘.
 
 - 관찰된 사실과 추정을 분리해라.
 - 원인을 계획 실패, 역량 불일치, 외부 의존성, 단순 실수 중 하나로 분류해라.
