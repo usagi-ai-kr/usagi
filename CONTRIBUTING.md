@@ -26,7 +26,8 @@ https://github.com/usagi-ai-kr/usagi
 
 - 한 PR에는 하나의 목적만 담습니다.
 - 용어집은 `docs/glossary/<category>.md`를 수정하고 `docs/glossary.md`는 생성합니다.
-- 스킬은 [Agent Skills specification](https://agentskills.io/specification)을 따릅니다. `SKILL.md`의 `name`은 디렉터리명과 같아야 합니다.
+- 스킬은 [Agent Skills specification](https://agentskills.io/specification)을 따릅니다. `SKILL.md`의 `name`은 디렉터리명과 같아야 합니다. `description`에는 자동 호출 조건인 `Use when ...` 문장을 넣습니다.
+- 스킬 원본은 `.agents/skills/`입니다. `.claude/skills`는 Claude Code가 스킬을 찾도록 원본을 가리키는 심볼릭 링크이며 직접 편집하지 않습니다.
 - `DESIGN.md`는 [design.md specification](https://github.com/google-labs-code/design.md)을 따릅니다.
 - `docs/wiki/`는 사람이 읽는 원본입니다. 운영 규칙을 추가하지 않습니다.
 - 비밀값·토큰·개인정보·원본 DB export를 커밋하지 않습니다.

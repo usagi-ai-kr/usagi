@@ -1,6 +1,6 @@
 ---
 name: architecture-review
-description: Review a change against the UI/App/Domain/Infra responsibility contract, run the static layer-dependency checker, and define Unit/Slice/Integration/Regression evidence.
+description: Review a change against the UI/App/Domain/Infra responsibility contract, run the static layer-dependency checker, and define Unit/Slice/Integration/Regression evidence. Use when adding or moving modules, changing cross-layer imports, or planning which tests prove a change.
 ---
 
 # Architecture review

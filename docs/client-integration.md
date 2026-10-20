@@ -11,7 +11,7 @@ audience: usagi를 운용하는 에이전트
 | 클라이언트 | 현재 usagi 상태 | 확인할 확장점 | 확장점이 없을 때 fallback |
 | --- | --- | --- | --- |
 | opencode | 레포지터리 설정 `opencode.jsonc`로 스킬 경로 등록 | plugin·hook 지원 여부 — 확인 필요 | `AGENTS.md` + `.agents/skills/` + `scripts/` |
-| Claude Code | 레포지터리 설정 `.claude/settings.json`으로 권한 제한 | hooks·commands·agents 지원 여부 — 확인 필요 | `AGENTS.md` + `.agents/skills/` |
+| Claude Code | `.claude/settings.json`으로 권한 제한, `.claude/skills` 심볼릭 링크로 스킬 인식 | hooks·commands·agents 지원 여부 — 확인 필요 | `AGENTS.md` + `.agents/skills/` |
 | Antigravity CLI (`agy`) | 레포지터리 설정 없음 | config·hook 지원 여부 — 확인 필요 | `AGENTS.md` + `.agents/skills/` + `scripts/` |
 | Codex | `AGENTS.md`만 사용 | 레포지터리 단위 config·hook 지원 여부 — 확인 필요 | `AGENTS.md` + `.agents/skills/` + `scripts/` |
 | Gemini CLI, Cursor, Copilot 등 | 레포지터리 설정 없음 | 각 도구의 레포지터리 단위 설정 — 확인 필요 | 위와 동일 |
@@ -30,6 +30,8 @@ audience: usagi를 운용하는 에이전트
 ## 3. 현재 범위
 
 - opencode와 Claude Code에는 최소 레포지터리 설정만 있습니다.
+- Claude Code는 `.claude/skills/`에서만 프로젝트 스킬을 찾습니다. `.claude/skills`는 `../.agents/skills`를 가리키는 심볼릭 링크라서 원본이 하나로 유지됩니다. `CLAUDE.md` → `AGENTS.md`와 같은 방식입니다.
+- Claude Code는 `description`을 보고 스킬 자동 호출 여부를 정합니다. 모든 스킬 `description`에 `Use when ...` 조건을 넣습니다.
 - Antigravity CLI와 Codex는 문서로만 지원합니다. fallback을 씁니다.
 - plugin 패키징과 hook 실행은 아직 없습니다. 검증하지 않은 코드를 먼저 돌리지 않습니다.
 
@@ -45,10 +47,12 @@ hook과 plugin은 코드를 실행할 수 있어 리뷰 대상입니다.
 
 ## 5. 검증
 
-`node scripts/validate.mjs`가 두 설정 파일을 파싱하고 우선 지원 대상 이름을 확인합니다.
+`node scripts/validate.mjs`가 두 설정 파일과 스킬 링크를 확인하고 우선 지원 대상 이름을 확인합니다.
 
 - `opencode.jsonc`는 JSON으로 읽히고 `skills.paths`에 `.agents/skills`가 있어야 합니다.
 - `.claude/settings.json`은 JSON으로 읽히고 `permissions`가 객체여야 합니다.
+- `.claude/skills`는 `../.agents/skills`를 가리키는 심볼릭 링크여야 합니다.
+- 모든 `SKILL.md`의 `description`에 `Use when ...` 조건이 있어야 합니다.
 - `docs/client-integration.md`에 우선 지원 대상 이름이 있어야 합니다.
 
 CI는 정적 검증만 수행합니다. hook과 plugin의 실제 동작은 클라이언트별로 선택해 확인하고 결과를 기록합니다.
