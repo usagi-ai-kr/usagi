@@ -380,3 +380,29 @@ test("schema and validator judge the same field mismatches the same way", () => 
   assert.equal(badShaRun.status, 1);
   assert.match(badShaRun.stdout, /error invalid_artifact_sha at artifacts\[0\]\.sha256/);
 });
+
+test("unresolvable artifact root fails closed with artifact_root_unresolved", () => {
+  // rootReal === null is unreachable through normal execution (run()
+  // requires the root to be a directory first), so force the branch by
+  // running a patched copy of the validator. No production seam needed.
+  const source = readFileSync(validatorPath, "utf8");
+  const anchor = "      rootReal = realpathSync(rootResolved);";
+  assert.ok(source.includes(anchor), "fail-closed seam anchor must exist in the validator");
+  const patched = source.replace(anchor, "      rootReal = null; // forced unresolved (test seam)");
+  assert.ok(!patched.includes("realpathSync(rootResolved)"), "seam must replace the only root resolution");
+  const dir = makeTemp("e2e-rootreal-");
+  const patchedPath = join(dir, "validate-e2e-result.mjs");
+  writeFileSync(patchedPath, patched);
+  const root = makeTemp("e2e-rootreal-root-");
+  const content = "rootreal-bytes";
+  mkdirSync(join(root, "artifacts"), { recursive: true });
+  writeFileSync(join(root, "artifacts", "ok.log"), content);
+  const file = writeResult("rootreal.json", behaviorResultWithArtifact(artifactEntry("artifacts/ok.log", content)));
+  const run = spawnSync(process.execPath, [patchedPath, "--result", file, "--artifact-root", root], {
+    encoding: "utf8",
+    timeout: 30000,
+  });
+  assert.equal(run.status, 1);
+  assert.match(run.stdout, /error artifact_root_unresolved at artifacts/);
+  assert.doesNotMatch(run.stdout, /summary: valid/);
+});

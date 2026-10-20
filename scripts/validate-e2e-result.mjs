@@ -528,12 +528,22 @@ function validateResult(result, expectations) {
 
   if (expectations.artifactRoot !== null) {
     const rootResolved = resolve(expectations.artifactRoot);
+    // Fail closed: if the root itself cannot be resolved, no artifact may
+    // pass. Unreachable in normal runs (run() already required the root to
+    // be a directory), but the branch must not silently skip containment.
     let rootReal = null;
     try {
       rootReal = realpathSync(rootResolved);
     } catch {
       rootReal = null;
     }
+    if (rootReal === null) {
+      err(
+        "artifact_root_unresolved",
+        "artifacts",
+        "cannot resolve --artifact-root to a real path; no artifact can be verified",
+      );
+    } else {
     for (const { artifactPath, basePath, declaredSha, declaredSize } of artifactChecks) {
       const resolved = resolve(rootResolved, artifactPath);
       if (resolved !== rootResolved && !resolved.startsWith(rootResolved + sep)) {
@@ -557,7 +567,7 @@ function validateResult(result, expectations) {
         err("artifact_missing", `${basePath}.path`, `artifact file not found: ${artifactPath}`);
         continue;
       }
-      if (rootReal !== null && real !== rootReal && !real.startsWith(rootReal + sep)) {
+      if (real !== rootReal && !real.startsWith(rootReal + sep)) {
         err(
           "artifact_outside_root",
           `${basePath}.path`,
@@ -567,7 +577,7 @@ function validateResult(result, expectations) {
       }
       let stats;
       try {
-        stats = statSync(resolved);
+        stats = statSync(real);
       } catch {
         err("artifact_missing", `${basePath}.path`, `artifact file not found: ${artifactPath}`);
         continue;
@@ -587,7 +597,7 @@ function validateResult(result, expectations) {
       if (declaredSha !== null) {
         let content;
         try {
-          content = readFileSync(resolved);
+          content = readFileSync(real);
         } catch {
           err("artifact_unreadable", `${basePath}.path`, `artifact file cannot be read: ${artifactPath}`);
           continue;
@@ -601,6 +611,7 @@ function validateResult(result, expectations) {
           );
         }
       }
+    }
     }
   }
 
