@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(git status:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(gh pr merge:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)"
