@@ -6,19 +6,12 @@
 
 다른 프로젝트에 적용할 때는 [`PROMPTS.md`](PROMPTS.md)와 [`docs/harness-starter/`](docs/harness-starter/)를 참고합니다.
 
-## 0. 복붙 프롬프트
+## 0. 시작 프롬프트
 
 ```text
 https://github.com/usagi-ai-kr/usagi
 
-이 저장소는 에이전트 운영 경험과 공통 규약을 모으는 공간이다.
-저장소가 로컬에 있으면 그 경로를, 없으면 위 GitHub 링크의 README.md, AGENTS.md, CONTRIBUTING.md, docs/glossary.md를 읽어라.
-
-앞으로 내가 쓰는 낯선 용어는 docs/glossary/<category>.md의 정의와 출처를 근거로 쉬운 말로 설명해라.
-용어집에 없는 용어는 docs/glossary/categories.json에서 카테고리를 고르고, 기존 형식으로 항목 초안과 참고 출처를 제안해라.
-문서를 바꾸기 전에 계획을 보여주고, 승인 후 node scripts/build-glossary-index.mjs와 node scripts/validate.mjs를 실행해라.
-Wiki는 사람이 읽는 문서이므로 운영 규칙을 추가하지 말고, 게시가 필요하면 ./scripts/sync-wiki.sh를 사용해라.
-디자인 변경은 DESIGN.md, 스킬 변경은 Agent Skills 스펙을 따른다.
+이 저장소의 AGENTS.md, CONTRIBUTING.md, docs/glossary.md를 읽고, 내 저장소에 필요한 최소 하네스만 제안해줘. 파일을 만들기 전에 계획을 보여줘.
 ```
 
 ## 1. 시작 전

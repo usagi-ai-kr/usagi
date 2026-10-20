@@ -18,7 +18,7 @@
 
 1. [스타터 가이드](https://github.com/usagi-ai-kr/usagi/blob/main/docs/harness-starter/README.md)
 2. [템플릿 모음](https://github.com/usagi-ai-kr/usagi/tree/main/docs/harness-starter/templates)
-3. [바로 쓰는 프롬프트](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)
+3. [참고 문서](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)
 
 ## 4. 적용 순서
 
@@ -27,7 +27,7 @@
 3. 역할과 작업 단위를 정합니다.
 4. CI와 리뷰 기준을 정합니다.
 5. 버전과 릴리스 방법을 정합니다.
-6. 프롬프트로 실행합니다.
+6. 참고 문서를 읽고 필요한 작업만 지시합니다.
 
 ## 5. 참고
 

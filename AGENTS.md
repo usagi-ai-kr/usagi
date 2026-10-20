@@ -6,7 +6,7 @@
 
 - `README.md`와 GitHub Wiki: **사람용**. 운영 규칙·구조 설명을 넣지 않습니다.
 - `AGENTS.md`: 에이전트용 안내 파일(이 파일).
-- `CONTRIBUTING.md`: AI 기여 체크리스트·복붙 프롬프트·릴리스 절차.
+- `CONTRIBUTING.md`: AI 기여 체크리스트·시작 프롬프트·릴리스 절차.
 - `DESIGN.md`: 시각 아이덴티티 토큰과 rationale.
 - `docs/glossary/`: 용어 원본. `docs/glossary.md`는 생성 인덱스입니다.
 - `docs/wiki/`: 사람용 위키 원본. `scripts/sync-wiki.sh`로만 게시합니다.
