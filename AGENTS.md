@@ -28,6 +28,7 @@
 - E2E·시각 증거: [e2e-contract.md](docs/e2e-contract.md)
 - 실행 증거: [execution-evidence.md](docs/execution-evidence.md)
 - 클라이언트 설정: [client-integration.md](docs/client-integration.md)
+- 게시 전 검증 훅: [client-integration.md](docs/client-integration.md)의 PreToolUse 훅이 차단하면 우회 사유 없이 진행하지 않습니다.
 - 문서 검토 경로: [document-review-paths.md](docs/document-review-paths.md)
 - 요구사항 추적성: [requirement-traceability.md](docs/requirement-traceability.md)
 - 시각화: [visualization-policy.md](docs/visualization-policy.md)

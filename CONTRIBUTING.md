@@ -57,6 +57,7 @@ node --test scripts/check-requirement-trace.test.mjs
 node --test scripts/check-diagrams.test.mjs
 node --test scripts/run-test-gates.test.mjs
 node scripts/run-test-gates.mjs --config test/fixtures/test-gates/config.json --only unit --json --evidence-dir tmp/test-gates
+node --test scripts/hooks/validate.test.mjs
 node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 for skill in .agents/skills/*; do npx --yes skills-ref@0.1.5 validate "$skill"; done
 npx --yes @google/design.md@0.4.0 lint DESIGN.md

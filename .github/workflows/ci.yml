@@ -67,6 +67,9 @@ jobs:
       - name: Run fixture unit gate
         run: node scripts/run-test-gates.mjs --config test/fixtures/test-gates/config.json --only unit --json --evidence-dir tmp/test-gates
 
+      - name: Test hook entrypoint
+        run: node --test scripts/hooks/validate.test.mjs
+
       - name: Check contract metadata
         run: node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 

@@ -105,6 +105,8 @@ const requiredFiles = [
   "test/fixtures/test-gates/unit.test.mjs",
   "test/fixtures/test-gates/regression.test.mjs",
   "docs/test-gate-contract.md",
+  "scripts/hooks/validate.mjs",
+  "scripts/hooks/validate.test.mjs",
   "scripts/lib/glossary.mjs",
   "scripts/sync-labels.sh",
   "scripts/sync-wiki.sh",
@@ -123,6 +125,7 @@ for (const path of [
   "scripts/check-requirement-trace.mjs",
   "scripts/check-diagrams.mjs",
   "scripts/run-test-gates.mjs",
+  "scripts/hooks/validate.mjs",
   "scripts/sync-labels.sh",
   "scripts/sync-wiki.sh",
   "scripts/apply-repo-policy.sh",
@@ -388,6 +391,7 @@ function checkWorkflow() {
     "node --test scripts/check-requirement-trace.test.mjs",
     "node --test scripts/check-diagrams.test.mjs",
     "node --test scripts/run-test-gates.test.mjs",
+    "node --test scripts/hooks/validate.test.mjs",
     "node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md",
     "@google/design.md@0.4.0 lint DESIGN.md",
     "permissions:",
@@ -708,6 +712,14 @@ function checkClientConfigs() {
       (typeof settings?.permissions !== "object" || settings.permissions === null)
     ) {
       fail(".claude/settings.json: permissions must be an object");
+    }
+    if (settings !== undefined) {
+      const preToolUse = settings?.hooks?.PreToolUse;
+      if (!Array.isArray(preToolUse) || preToolUse.length === 0) {
+        fail(".claude/settings.json: missing hooks.PreToolUse");
+      } else if (!JSON.stringify(preToolUse).includes("scripts/hooks/validate.mjs")) {
+        fail(".claude/settings.json: hooks.PreToolUse must run scripts/hooks/validate.mjs");
+      }
     }
   }
 
