@@ -53,6 +53,7 @@ node --test scripts/doctor.test.mjs
 node --test scripts/check-layer-deps.test.mjs
 node --test scripts/validate-e2e-result.test.mjs
 node --test scripts/run-command.test.mjs
+node --test scripts/check-requirement-trace.test.mjs
 node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 for skill in .agents/skills/*; do npx --yes skills-ref@0.1.5 validate "$skill"; done
 npx --yes @google/design.md@0.4.0 lint DESIGN.md

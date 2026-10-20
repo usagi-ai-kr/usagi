@@ -8,6 +8,7 @@ All notable changes to this project are documented here. This project follows [S
 
 - Claude Code skill discovery through a `.claude/skills` symlink to `.agents/skills`, with validation.
 - Command runner and shared execution evidence envelope with timeout, process cleanup, output capture, truncation, and redaction.
+- Requirement traceability checker for PRD/SRS/ADR IDs, test mapping and ADR references; fenced example IDs are excluded from the scan.
 
 ### Changed
 

@@ -28,6 +28,7 @@
 - 실행 증거: [execution-evidence.md](docs/execution-evidence.md)
 - 클라이언트 설정: [client-integration.md](docs/client-integration.md)
 - 문서 검토 경로: [document-review-paths.md](docs/document-review-paths.md)
+- 요구사항 추적성: [requirement-traceability.md](docs/requirement-traceability.md)
 - 시각화: [visualization-policy.md](docs/visualization-policy.md)
 - 사람이 읽는 문서: [독자 중심 작성 계약](docs/human-writing-contract.md), [human-doc 스킬](.agents/skills/human-doc/SKILL.md)
 - 규칙 파일 길이 기준·근거: [docs/rule-file-guidelines.md](docs/rule-file-guidelines.md)

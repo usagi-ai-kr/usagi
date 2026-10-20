@@ -55,6 +55,9 @@ jobs:
       - name: Test command runner
         run: node --test scripts/run-command.test.mjs
 
+      - name: Test requirement traceability
+        run: node --test scripts/check-requirement-trace.test.mjs
+
       - name: Check contract metadata
         run: node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 
