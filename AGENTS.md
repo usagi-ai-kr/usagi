@@ -20,6 +20,7 @@
 - 위임·증거 제안: [delegation-handoff-evidence.md](docs/delegation-handoff-evidence.md)
 - triage·증거 보증 제안: [harness-triage-evidence-assurance.md](docs/harness-triage-evidence-assurance.md)
 - 디자인: [DESIGN.md](DESIGN.md)
+- 디자인 레퍼런스·검증: [design-references.md](docs/design-references.md), [design-review 스킬](.agents/skills/design-review/SKILL.md)
 - glossary 스킬: [.agents/skills/glossary/SKILL.md](.agents/skills/glossary/SKILL.md)
 - 실행 환경·의존성: [toolchain-contract.md](docs/toolchain-contract.md)
 - 구조·테스트 계약: [architecture-contract.md](docs/architecture-contract.md)

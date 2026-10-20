@@ -10,6 +10,7 @@ All notable changes to this project are documented here. This project follows [S
 - Architecture responsibility/dependency contract, example map, and static layer-dependency checker.
 - Human-readable wiki page synthesizing model-operation observations from moi, yoroi, and the-great-dalmuti.
 - Human-readable wiki concept page covering skills, rule files, DESIGN.md, TDD and layers.
+- Design reference catalog, design decision template, and design-review skill for token-grounded visual work.
 
 ## [0.1.3] - 2026-10-20
 
