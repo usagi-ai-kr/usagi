@@ -10,11 +10,11 @@
 
 | 카테고리 | 문서 | 용어 수 |
 | --- | --- | --- |
-| 오케스트레이션 | [Orchestration](glossary/orchestration.md) | 24 |
-| 신뢰성 | [Reliability](glossary/reliability.md) | 18 |
+| 오케스트레이션 | [Orchestration](glossary/orchestration.md) | 27 |
+| 신뢰성 | [Reliability](glossary/reliability.md) | 22 |
 | Git·CI | [Git & CI](glossary/git-ci.md) | 16 |
 | 테스트·품질 | [Testing & Quality](glossary/testing-quality.md) | 10 |
-| 문서·운영 | [Documentation & Operations](glossary/operations.md) | 8 |
+| 문서·운영 | [Documentation & Operations](glossary/operations.md) | 9 |
 
 - **오케스트레이션** — 에이전트 역할, 작업 분배, 콜백, 소유권, 리뷰 체인처럼 누가 무엇을 하는가에 관한 용어.
 - **신뢰성** — 원장, 아웃박스, 멱등성, 재조정처럼 중단·중복·유실에도 상태를 지키는 용어.
@@ -44,6 +44,7 @@
 
 - [callback](glossary/orchestration.md#callback) — 오케스트레이션
 - [check](glossary/git-ci.md#check) — Git·CI
+- [checkpoint](glossary/reliability.md#checkpoint) — 신뢰성
 - [CI](glossary/git-ci.md#ci) — Git·CI
 - [CI loop](glossary/git-ci.md#ci-loop) — Git·CI
 - [commit bundle](glossary/git-ci.md#commit-bundle) — Git·CI
@@ -79,6 +80,7 @@
 - [handoff](glossary/orchestration.md#handoff) — 오케스트레이션
 - [harness](glossary/orchestration.md#harness) — 오케스트레이션
 - [head SHA](glossary/git-ci.md#head-sha) — Git·CI
+- [health check](glossary/reliability.md#health-check) — 신뢰성
 - [Herdr](glossary/orchestration.md#herdr) — 오케스트레이션
 
 ### I
@@ -94,10 +96,12 @@
 
 ### M
 
+- [manifest](glossary/reliability.md#manifest) — 신뢰성
 - [match-head-commit](glossary/git-ci.md#match-head-commit) — Git·CI
 - [MECE](glossary/operations.md#mece) — 문서·운영
 - [merge commit](glossary/git-ci.md#merge-commit) — Git·CI
 - [model family](glossary/orchestration.md#model-family) — 오케스트레이션
+- [model tier](glossary/orchestration.md#model-tier) — 오케스트레이션
 
 ### O
 
@@ -111,6 +115,7 @@
 - [P0/P1/P2](glossary/operations.md#p0-p1-p2) — 문서·운영
 - [packet](glossary/orchestration.md#packet) — 오케스트레이션
 - [panel](glossary/orchestration.md#panel) — 오케스트레이션
+- [permalink](glossary/operations.md#permalink) — 문서·운영
 - [polling](glossary/orchestration.md#polling) — 오케스트레이션
 - [port collision](glossary/orchestration.md#port-collision) — 오케스트레이션
 - [PR](glossary/git-ci.md#pr) — Git·CI
@@ -129,9 +134,11 @@
 
 ### S
 
+- [scope freeze](glossary/orchestration.md#scope-freeze) — 오케스트레이션
 - [session reset / context reset](glossary/orchestration.md#session-reset-context-reset) — 오케스트레이션
 - [SHA](glossary/git-ci.md#sha) — Git·CI
 - [smoke test](glossary/testing-quality.md#smoke-test) — 테스트·품질
+- [snapshot](glossary/reliability.md#snapshot) — 신뢰성
 - [squash merge](glossary/git-ci.md#squash-merge) — Git·CI
 - [stacked PR](glossary/git-ci.md#stacked-pr) — Git·CI
 - [staged tree](glossary/git-ci.md#staged-tree) — Git·CI
@@ -141,6 +148,7 @@
 ### T
 
 - [token](glossary/operations.md#token) — 문서·운영
+- [triage](glossary/orchestration.md#triage) — 오케스트레이션
 - [typecheck](glossary/testing-quality.md#typecheck) — 테스트·품질
 
 ### U

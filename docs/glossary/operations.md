@@ -49,6 +49,15 @@ Mutually Exclusive, Collectively Exhaustive. 분류가 서로 겹치지 않고 �
 
 참고: [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) 체크리스트
 
+<a id="permalink"></a>
+## permalink
+
+**고정 링크**
+
+특정 커밋·줄을 가리키는 고정 링크. 문서가 갱신되어도 근거가 바뀌지 않도록 커밋 SHA를 포함합니다.
+
+참고: [Issue #9](https://github.com/usagi-ai-kr/usagi/issues/9) 참고 링크
+
 <a id="runbook"></a>
 ## runbook
 
