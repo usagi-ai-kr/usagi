@@ -220,7 +220,7 @@ export function renderIndex(glossary) {
     "- 위키 게시본: [Glossary](https://github.com/usagi-ai-kr/usagi/wiki/Glossary)",
   );
   lines.push(
-    "- 읽는 순서: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1) → [Issue #3](https://github.com/usagi-ai-kr/usagi/issues/3) → [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) → 이 인덱스",
+    "- 관련 제안: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1) · [Issue #3](https://github.com/usagi-ai-kr/usagi/issues/3) · [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) · [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5)",
   );
   lines.push("");
   lines.push("## 카테고리");
@@ -229,7 +229,7 @@ export function renderIndex(glossary) {
   lines.push("| --- | --- | --- |");
   for (const category of categories) {
     lines.push(
-      `| ${category.korean} | [${category.file}](glossary/${category.file}) | ${category.terms.length} |`,
+      `| ${category.korean} | [${category.title}](glossary/${category.file}) | ${category.terms.length} |`,
     );
   }
   lines.push("");

@@ -4,17 +4,17 @@
 
 - 저장소 원본: [docs/glossary/](https://github.com/usagi-ai-kr/usagi/tree/main/docs/glossary)
 - 위키 게시본: [Glossary](https://github.com/usagi-ai-kr/usagi/wiki/Glossary)
-- 읽는 순서: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1) → [Issue #3](https://github.com/usagi-ai-kr/usagi/issues/3) → [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) → 이 인덱스
+- 관련 제안: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1) · [Issue #3](https://github.com/usagi-ai-kr/usagi/issues/3) · [PR #2](https://github.com/usagi-ai-kr/usagi/pull/2) · [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5)
 
 ## 카테고리
 
 | 카테고리 | 문서 | 용어 수 |
 | --- | --- | --- |
-| 오케스트레이션 | [orchestration.md](glossary/orchestration.md) | 23 |
-| 신뢰성 | [reliability.md](glossary/reliability.md) | 15 |
-| Git·CI | [git-ci.md](glossary/git-ci.md) | 15 |
-| 테스트·품질 | [testing-quality.md](glossary/testing-quality.md) | 10 |
-| 문서·운영 | [operations.md](glossary/operations.md) | 8 |
+| 오케스트레이션 | [Orchestration](glossary/orchestration.md) | 24 |
+| 신뢰성 | [Reliability](glossary/reliability.md) | 18 |
+| Git·CI | [Git & CI](glossary/git-ci.md) | 16 |
+| 테스트·품질 | [Testing & Quality](glossary/testing-quality.md) | 10 |
+| 문서·운영 | [Documentation & Operations](glossary/operations.md) | 8 |
 
 - **오케스트레이션** — 에이전트 역할, 작업 분배, 콜백, 소유권, 리뷰 체인처럼 누가 무엇을 하는가에 관한 용어.
 - **신뢰성** — 원장, 아웃박스, 멱등성, 재조정처럼 중단·중복·유실에도 상태를 지키는 용어.
@@ -51,13 +51,16 @@
 
 ### D
 
+- [delegation](glossary/orchestration.md#delegation) — 오케스트레이션
 - [dispatch](glossary/orchestration.md#dispatch) — 오케스트레이션
 - [draft PR](glossary/git-ci.md#draft-pr) — Git·CI
 
 ### E
 
+- [environment fingerprint](glossary/reliability.md#environment-fingerprint) — 신뢰성
 - [escalation](glossary/orchestration.md#escalation) — 오케스트레이션
 - [event envelope](glossary/reliability.md#event-envelope) — 신뢰성
+- [evidence provenance](glossary/reliability.md#evidence-provenance) — 신뢰성
 
 ### F
 
@@ -68,6 +71,7 @@
 ### G
 
 - [gate](glossary/reliability.md#gate) — 신뢰성
+- [gate sequence](glossary/reliability.md#gate-sequence) — 신뢰성
 - [glossary](glossary/operations.md#glossary) — 문서·운영
 
 ### H
@@ -130,6 +134,7 @@
 - [smoke test](glossary/testing-quality.md#smoke-test) — 테스트·품질
 - [squash merge](glossary/git-ci.md#squash-merge) — Git·CI
 - [stacked PR](glossary/git-ci.md#stacked-pr) — Git·CI
+- [staged tree](glossary/git-ci.md#staged-tree) — Git·CI
 - [structured I/O](glossary/orchestration.md#structured-i-o) — 오케스트레이션
 - [subagent](glossary/orchestration.md#subagent) — 오케스트레이션
 

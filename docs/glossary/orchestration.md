@@ -40,6 +40,15 @@ opencode·Claude·agy처럼 에이전트를 구동하는 도구와 모델의 조
 
 참고: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1) §1
 
+<a id="delegation"></a>
+## delegation
+
+**위임**
+
+오케스트레이터가 저장소 산출물 변경을 워커에게 맡기는 것. 읽기 전용 점검은 직접 할 수 있지만 코드·테스트·문서·설정 변경은 위임해야 합니다.
+
+참고: [PR #5](https://github.com/usagi-ai-kr/usagi/pull/5) §1
+
 <a id="dispatch"></a>
 ## dispatch
 
