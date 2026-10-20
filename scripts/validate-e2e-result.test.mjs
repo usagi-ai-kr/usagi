@@ -2,8 +2,8 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -269,4 +269,114 @@ test("--json output parses and carries stable fields", () => {
   }
   assert.equal(invalidReport.summary.errors, invalidReport.errors.length);
   assert.equal(invalidReport.summary.warnings, invalidReport.warnings.length);
+});
+
+function symlinkCapable() {
+  if (platform() === "win32") return false;
+  try {
+    const probe = makeTemp("e2e-symlink-probe-");
+    symlinkSync(probe, join(probe, "probe-link"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function skipNoSymlink(t) {
+  if (!symlinkCapable()) {
+    t.skip("symlink creation needs privileges unavailable on this platform");
+    return true;
+  }
+  return false;
+}
+
+function behaviorResultWithArtifact(entry) {
+  const result = baseResult();
+  result.artifacts = [entry];
+  return result;
+}
+
+function artifactEntry(relativePath, content) {
+  return {
+    type: "log",
+    path: relativePath,
+    sha256: sha256(content),
+    size_bytes: Buffer.byteLength(content),
+  };
+}
+
+test("symlink inside root pointing outside fails with artifact_outside_root", (t) => {
+  if (skipNoSymlink(t)) return;
+  const root = makeTemp("e2e-symlink-root-");
+  const outside = makeTemp("e2e-symlink-outside-");
+  const secret = "outside-secret-bytes";
+  writeFileSync(join(outside, "secret.log"), secret);
+  symlinkSync(join(outside, "secret.log"), join(root, "leak.log"));
+  const file = writeResult("symlink-escape.json", behaviorResultWithArtifact(artifactEntry("leak.log", secret)));
+  const run = runValidator(["--result", file, "--artifact-root", root]);
+  assert.equal(run.status, 1);
+  assert.match(run.stdout, /error artifact_outside_root at artifacts\[0\]\.path/);
+});
+
+test("symlink inside root pointing inside passes", (t) => {
+  if (skipNoSymlink(t)) return;
+  const root = makeTemp("e2e-symlink-ok-");
+  const content = "inside-bytes";
+  mkdirSync(join(root, "artifacts"), { recursive: true });
+  writeFileSync(join(root, "artifacts", "real.log"), content);
+  symlinkSync(join(root, "artifacts", "real.log"), join(root, "artifacts", "alias.log"));
+  const file = writeResult("symlink-inside.json", behaviorResultWithArtifact(artifactEntry("artifacts/alias.log", content)));
+  const run = runValidator(["--result", file, "--artifact-root", root]);
+  assert.equal(run.status, 0);
+  assert.match(run.stdout, /summary: valid/);
+});
+
+test("artifact root itself being a symlink passes for normal files", (t) => {
+  if (skipNoSymlink(t)) return;
+  const real = makeTemp("e2e-symlink-realroot-");
+  const content = "root-target-bytes";
+  writeFileSync(join(real, "ok.log"), content);
+  const linkBase = makeTemp("e2e-symlink-linkbase-");
+  const linkRoot = join(linkBase, "root-link");
+  symlinkSync(real, linkRoot);
+  const file = writeResult("symlink-root.json", behaviorResultWithArtifact(artifactEntry("ok.log", content)));
+  const run = runValidator(["--result", file, "--artifact-root", linkRoot]);
+  assert.equal(run.status, 0);
+  assert.match(run.stdout, /summary: valid/);
+});
+
+test("path through a symlinked directory escaping the root fails", (t) => {
+  if (skipNoSymlink(t)) return;
+  const root = makeTemp("e2e-symlink-dir-");
+  const outside = makeTemp("e2e-symlink-dirout-");
+  const secret = "dir-escape-bytes";
+  writeFileSync(join(outside, "evil.log"), secret);
+  symlinkSync(outside, join(root, "sub"));
+  const file = writeResult("symlink-direscape.json", behaviorResultWithArtifact(artifactEntry("sub/evil.log", secret)));
+  const run = runValidator(["--result", file, "--artifact-root", root]);
+  assert.equal(run.status, 1);
+  assert.match(run.stdout, /error artifact_outside_root at artifacts\[0\]\.path/);
+});
+
+test("schema and validator judge the same field mismatches the same way", () => {
+  const schemaPath = join(dirname(validatorPath), "..", "docs", "e2e-result.schema.json");
+  const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
+  const item = schema.properties.artifacts.items.properties;
+  assert.equal(item.size_bytes.type, "integer");
+  assert.equal(item.size_bytes.minimum, 0);
+  assert.equal(item.sha256.type, "string");
+  assert.ok(new RegExp(item.sha256.pattern).test("a".repeat(64)));
+  assert.ok(!new RegExp(item.sha256.pattern).test("xyz"));
+
+  const badSize = baseResult();
+  badSize.artifacts = [{ type: "log", path: "a.log", sha256: sha256("x"), size_bytes: "7" }];
+  const badSizeRun = runValidator(["--result", writeResult("schema-size.json", badSize)]);
+  assert.equal(badSizeRun.status, 1);
+  assert.match(badSizeRun.stdout, /error invalid_type at artifacts\[0\]\.size_bytes/);
+
+  const badSha = baseResult();
+  badSha.artifacts = [{ type: "log", path: "a.log", sha256: "xyz", size_bytes: 1 }];
+  const badShaRun = runValidator(["--result", writeResult("schema-sha.json", badSha)]);
+  assert.equal(badShaRun.status, 1);
+  assert.match(badShaRun.stdout, /error invalid_artifact_sha at artifacts\[0\]\.sha256/);
 });

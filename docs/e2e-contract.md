@@ -78,7 +78,7 @@ node scripts/validate-e2e-result.mjs --result <file> [options]
 
 hard error(결과 무효): 필수 필드 누락·타입 오류·enum 위반, 정의되지 않은 필드, `target.commit_sha`가 40/64 hex가 아니거나 `--expected-sha`와 불일치, `--expected-viewport`/`--expected-dpr` 불일치, passed인데 `exit_code != 0`, passed인데 실패 assertion 존재, passed인데 `completeness != complete`, failed인데 `exit_code == 0`, passed인데 `duration_ms > budgets.wall_time_ms`, visual/mixed가 passed인데 `font_ready != true` 또는 screenshot 아티팩트 없음, 아티팩트 경로가 절대 경로이거나 `..` 세그먼트 포함, `started_at`이 ISO 8601이 아니거나 duration·assertion·budget 값이 음수.
 
-`--artifact-root`를 주면 아티팩트마다 존재 여부, 루트 안 포함 여부, `size_bytes` 일치, SHA-256 일치를 검사해 hard error로 처리한다. 경로 포함 검사는 사전순(lexical)이며 symlink 우회는 이 단계에서 보증하지 않는다.
+`--artifact-root`를 주면 아티팩트마다 존재 여부, 루트 안 포함 여부, `size_bytes` 일치, SHA-256 일치를 검사해 hard error로 처리한다. 경로 포함 검사는 사전순으로 먼저 하고, 루트와 각 파일을 `realpath`로 해석해 symlink 탈출도 같은 hard error로 거부한다. 검사와 사용 사이 경로 교체(TOCTOU)는 보증하지 않으며, 격리 실행 검증은 #64 범위다. 아티팩트 SHA가 서버·빌드·결과 파일 중 어디에서 왔는지 연결하는 요구는 후속으로 남긴다.
 
 warning(무효 아님, 검토 대상): 아티팩트가 있는데 `--artifact-root`가 없어 해시를 검증하지 못함, screenshot이 있는데 `masking.applied`가 false, passed인데 `console_errors > 0` 또는 `network_failures > 0`, passed인데 아티팩트가 전혀 없음(behavior-only).
 
