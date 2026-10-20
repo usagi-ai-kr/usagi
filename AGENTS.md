@@ -26,6 +26,7 @@
 - 구조·테스트 계약: [architecture-contract.md](docs/architecture-contract.md)
 - E2E·시각 증거: [e2e-contract.md](docs/e2e-contract.md)
 - 클라이언트 설정: [client-integration.md](docs/client-integration.md)
+- 문서 검토 경로: [document-review-paths.md](docs/document-review-paths.md)
 - 사람이 읽는 문서: [독자 중심 작성 계약](docs/human-writing-contract.md), [human-doc 스킬](.agents/skills/human-doc/SKILL.md)
 - 규칙 파일 길이 기준·근거: [docs/rule-file-guidelines.md](docs/rule-file-guidelines.md)
 - 다른 프로젝트 적용: [docs/harness-starter/README.md](docs/harness-starter/README.md), [PROMPTS.md](PROMPTS.md)
