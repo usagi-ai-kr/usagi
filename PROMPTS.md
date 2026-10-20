@@ -11,7 +11,7 @@ https://github.com/usagi-ai-kr/usagi 를 참고해 내 저장소에 최소 하�
 ## 1. 최소 하네스 적용
 
 ```text
-https://github.com/usagi-ai-kr/usagi 의 docs/harness-starter/README.md와 templates/를 참고해 내 저장소에 최소 하네스를 적용해줘.
+https://github.com/usagi-ai-kr/usagi/blob/main/docs/harness-starter/README.md 와 https://github.com/usagi-ai-kr/usagi/tree/main/docs/harness-starter/templates 를 참고해 내 저장소에 최소 하네스를 적용해줘.
 
 - 먼저 내 저장소의 README, AGENTS.md, CI, 이슈/PR 템플릿을 읽어라.
 - AGENTS.md, CONTRIBUTING.md, labels, branch protection, CI 중 필요한 것만 골라 계획을 보여라.
@@ -22,7 +22,7 @@ https://github.com/usagi-ai-kr/usagi 의 docs/harness-starter/README.md와 templ
 ## 2. AGENTS.md 정리
 
 ```text
-https://github.com/usagi-ai-kr/usagi/blob/main/AGENTS.md 와 docs/rule-file-guidelines.md를 참고해 내 저장소의 AGENTS.md를 짧은 안내 파일로 정리해줘.
+https://github.com/usagi-ai-kr/usagi/blob/main/AGENTS.md 와 https://github.com/usagi-ai-kr/usagi/blob/main/docs/rule-file-guidelines.md 를 참고해 내 저장소의 AGENTS.md를 짧은 안내 파일로 정리해줘.
 
 - 100줄/800단어 이하로 유지해라.
 - 목적, 먼저 읽을 문서, 꼭 지킬 규칙, 명령, 금지 사항만 남겨라.
@@ -33,7 +33,7 @@ https://github.com/usagi-ai-kr/usagi/blob/main/AGENTS.md 와 docs/rule-file-guid
 ## 3. 역할과 작업 분배
 
 ```text
-https://github.com/usagi-ai-kr/usagi/blob/main/docs/multi-agent-orchestration-contract.md 와 docs/delegation-handoff-evidence.md를 참고해 내 저장소의 에이전트 역할을 정리해줘.
+https://github.com/usagi-ai-kr/usagi/blob/main/docs/multi-agent-orchestration-contract.md 와 https://github.com/usagi-ai-kr/usagi/blob/main/docs/delegation-handoff-evidence.md 를 참고해 내 저장소의 에이전트 역할을 정리해줘.
 
 - 오케스트레이터, 구현 워커, 리뷰어의 책임과 하지 말아야 할 일을 표로 만들어라.
 - 작업 단위 브리프 템플릿(목표, 완료 기준, 소유 파일, 금지, 검증 명령, 보고 경로)을 만들어라.
@@ -67,7 +67,7 @@ https://github.com/usagi-ai-kr/usagi/blob/main/docs/harness-triage-evidence-assu
 ## 6. 용어집 만들기
 
 ```text
-https://github.com/usagi-ai-kr/usagi/blob/main/docs/glossary.md 와 docs/glossary/의 카테고리 문서를 참고해 내 저장소의 용어집을 만들어줘.
+https://github.com/usagi-ai-kr/usagi/blob/main/docs/glossary.md 와 https://github.com/usagi-ai-kr/usagi/tree/main/docs/glossary 의 카테고리 문서를 참고해 내 저장소의 용어집을 만들어줘.
 
 - 먼저 내 저장소 문서에서 낯선 용어를 20개 골라라.
 - 5개 이하의 카테고리로 나누고, 각 용어에 짧은 뜻과 출처를 적어라.
@@ -89,7 +89,7 @@ https://github.com/usagi-ai-kr/usagi/blob/main/CONTRIBUTING.md 의 버전·릴�
 ## 8. 저장소 점검
 
 ```text
-https://github.com/usagi-ai-kr/usagi/blob/main/docs/rule-file-guidelines.md 와 docs/harness-starter/README.md를 기준으로 내 저장소를 점검해줘.
+https://github.com/usagi-ai-kr/usagi/blob/main/docs/rule-file-guidelines.md 와 https://github.com/usagi-ai-kr/usagi/blob/main/docs/harness-starter/README.md 를 기준으로 내 저장소를 점검해줘.
 
 - AGENTS.md가 너무 길거나 중복된 규칙이 있는지 확인해라.
 - README/Wiki에 에이전트 운영 규칙이 섞여 있는지 확인해라.
@@ -100,7 +100,7 @@ https://github.com/usagi-ai-kr/usagi/blob/main/docs/rule-file-guidelines.md 와 
 ## 9. 사람이 읽는 문서 다듬기
 
 ```text
-https://github.com/usagi-ai-kr/usagi/blob/main/README.md 와 docs/wiki/를 참고해 내 저장소의 README를 사람이 읽기 쉽게 다듬어줘.
+https://github.com/usagi-ai-kr/usagi/blob/main/README.md 와 https://github.com/usagi-ai-kr/usagi/tree/main/docs/wiki 를 참고해 내 저장소의 README를 사람이 읽기 쉽게 다듬어줘.
 
 - 목적, 무엇이 있는지, 처음 읽는 순서, 현재 버전만 남겨라.
 - 운영 규칙과 내부 구조 설명은 AGENTS.md나 CONTRIBUTING.md로 옮겨라.
