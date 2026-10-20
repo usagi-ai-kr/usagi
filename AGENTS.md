@@ -25,6 +25,7 @@
 - 실행 환경·의존성: [toolchain-contract.md](docs/toolchain-contract.md)
 - 구조·테스트 계약: [architecture-contract.md](docs/architecture-contract.md)
 - E2E·시각 증거: [e2e-contract.md](docs/e2e-contract.md)
+- 실행 증거: [execution-evidence.md](docs/execution-evidence.md)
 - 클라이언트 설정: [client-integration.md](docs/client-integration.md)
 - 문서 검토 경로: [document-review-paths.md](docs/document-review-paths.md)
 - 시각화: [visualization-policy.md](docs/visualization-policy.md)
