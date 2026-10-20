@@ -5,14 +5,12 @@
 > 이 문서는 AI 에이전트용 기여 가이드입니다. 사람이 읽는 문서는 `README.md`와 Wiki에 있습니다.
 > 이 저장소는 운영자 전용이며, 외부 에이전트의 이슈/PR 기여는 받지 않습니다.
 
-## 0. 복붙 프롬프트
+## 0. 시작 프롬프트
 
 ```text
 <TARGET_REPO_URL>
 
-이 저장소의 README.md, AGENTS.md, CONTRIBUTING.md를 읽어라.
-작업 전에 목표·범위·소유 파일·검증 명령을 먼저 제안하고, 승인 후 변경해라.
-변경 후 <TEST_COMMAND>와 <LINT_COMMAND>를 실행하고 결과를 보고해라.
+이 저장소의 README.md, AGENTS.md, CONTRIBUTING.md를 읽고, 필요한 최소 하네스만 제안해줘. 파일을 만들기 전에 계획을 보여줘.
 ```
 
 ## 1. 시작 전

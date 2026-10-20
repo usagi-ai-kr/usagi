@@ -9,14 +9,14 @@
 3. [`templates/CONTRIBUTING.md`](templates/CONTRIBUTING.md)를 복사해 에이전트 기여 체크리스트를 만듭니다.
 4. [`templates/labels.json`](templates/labels.json)과 [`templates/branch-protection.json`](templates/branch-protection.json)을 `.github/`에 맞게 적용합니다.
 5. [`templates/ci.yml`](templates/ci.yml)을 대상 저장소의 검증 명령에 맞게 수정합니다.
-6. [`PROMPTS.md`](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)의 프롬프트로 나머지 설정을 에이전트에게 맡깁니다.
+6. [`PROMPTS.md`](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)에서 참고할 문서를 확인합니다.
 
 ## 최소 구성
 
 | 구성 | 역할 | 이 저장소 예시 |
 | --- | --- | --- |
 | `AGENTS.md` | 에이전트용 안내 파일. 100줄 이하 | [`AGENTS.md`](https://github.com/usagi-ai-kr/usagi/blob/main/AGENTS.md) |
-| `CONTRIBUTING.md` | 상세 기여 체크리스트·복붙 프롬프트 | [`CONTRIBUTING.md`](https://github.com/usagi-ai-kr/usagi/blob/main/CONTRIBUTING.md) |
+| `CONTRIBUTING.md` | 상세 기여 체크리스트·시작 프롬프트 | [`CONTRIBUTING.md`](https://github.com/usagi-ai-kr/usagi/blob/main/CONTRIBUTING.md) |
 | `README.md` / Wiki | 사람이 읽는 진입점 | [`README.md`](https://github.com/usagi-ai-kr/usagi/blob/main/README.md) |
 | `.github/labels.json` | 최소 MECE 레이블 | [`labels.json`](https://github.com/usagi-ai-kr/usagi/blob/main/.github/labels.json) |
 | `.github/branch-protection.json` | `main` 보호 설정 | [`branch-protection.json`](https://github.com/usagi-ai-kr/usagi/blob/main/.github/branch-protection.json) |
@@ -52,7 +52,7 @@ report: "reports/auth-error.md"
 5. **게이트를 만듭니다.** CI, 리뷰, 증거 확인을 통과해야 병합되도록 합니다.
 6. **자동화합니다.** 레이블, 브랜치 보호, CI를 문서 규칙과 일치시킵니다.
 7. **버전을 관리합니다.** SemVer, `VERSION`, `CHANGELOG.md`, 마일스톤, 태그를 사용합니다.
-8. **프롬프트로 실행합니다.** [`PROMPTS.md`](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)에서 상황에 맞는 프롬프트를 복사합니다.
+8. **참고 문서로 실행합니다.** [`PROMPTS.md`](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)에서 참고할 문서를 확인합니다.
 
 ## 최소 체크리스트
 

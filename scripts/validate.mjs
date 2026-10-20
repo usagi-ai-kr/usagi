@@ -511,14 +511,25 @@ function checkPromptLibrary() {
   const text = read(path);
   const promptCount = (text.match(/```text/g) ?? []).length;
 
-  if (promptCount < 8) {
-    fail(`PROMPTS.md: expected at least 8 copy-paste prompts, got ${promptCount}`);
+  if (promptCount > 1) {
+    fail(
+      `PROMPTS.md: found ${promptCount} prompt blocks; keep it a reference index, not a prompt collection`,
+    );
   }
-  if (!text.includes("https://github.com/usagi-ai-kr/usagi")) {
-    fail("PROMPTS.md: prompts must reference the usagi repository");
-  }
-  if (!text.includes("docs/harness-starter/README.md")) {
-    fail("PROMPTS.md: must link the harness starter guide");
+  for (const expected of [
+    "https://github.com/usagi-ai-kr/usagi",
+    "docs/harness-starter/README.md",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "docs/glossary.md",
+    "DESIGN.md",
+    "docs/architecture-contract.md",
+    "docs/toolchain-contract.md",
+    "docs/multi-agent-orchestration-contract.md",
+  ]) {
+    if (!text.includes(expected)) {
+      fail(`PROMPTS.md: must mention "${expected}"`);
+    }
   }
 }
 

@@ -22,7 +22,7 @@
 ## 저장소
 
 - [README](https://github.com/usagi-ai-kr/usagi#readme)
-- [바로 쓰는 프롬프트](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)
+- [참고 문서](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)
 - [Changelog](https://github.com/usagi-ai-kr/usagi/blob/main/CHANGELOG.md)
 - [Issues](https://github.com/usagi-ai-kr/usagi/issues)
 - [Pull requests](https://github.com/usagi-ai-kr/usagi/pulls)

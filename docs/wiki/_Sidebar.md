@@ -13,5 +13,5 @@
   - [Testing & Quality](Glossary-Testing-Quality)
   - [Documentation & Operations](Glossary-Docs-Operations)
 - [README](https://github.com/usagi-ai-kr/usagi#readme)
-- [프롬프트](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)
+- [참고 문서](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)
 - [Changelog](https://github.com/usagi-ai-kr/usagi/blob/main/CHANGELOG.md)
