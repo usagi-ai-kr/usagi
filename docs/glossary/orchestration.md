@@ -103,6 +103,15 @@ opencode·Claude·agy처럼 에이전트를 구동하는 도구와 모델의 조
 
 참고: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1) §1
 
+<a id="model-tier"></a>
+## model tier
+
+**모델 계층**
+
+모델을 역할·난이도별로 나눈 계층. 설계·최종 리뷰는 상위 계층, 확인·수정·문서 초안은 빠른 계층에 맡깁니다.
+
+참고: [Issue #9](https://github.com/usagi-ai-kr/usagi/issues/9) 운영 노하우
+
 <a id="orchestrator"></a>
 ## orchestrator
 
@@ -184,6 +193,15 @@ Herdr에서 에이전트 세션이 보이는 창(pane). pane id는 특정 도구
 
 참고: [Issue #1](https://github.com/usagi-ai-kr/usagi/issues/1) §4
 
+<a id="scope-freeze"></a>
+## scope freeze
+
+**범위 동결**
+
+위임 시점에 완료 기준과 범위를 고정하는 것. 임의 확대는 허용하지 않고, 변경이 필요하면 별도 승인·단위로 분리합니다.
+
+참고: [Issue #9](https://github.com/usagi-ai-kr/usagi/issues/9) 운영 노하우, [PR #12](https://github.com/usagi-ai-kr/usagi/pull/12) §2
+
 <a id="session-reset-context-reset"></a>
 ## session reset / context reset
 
@@ -210,6 +228,15 @@ Herdr에서 에이전트 세션이 보이는 창(pane). pane id는 특정 도구
 다른 에이전트가 작업을 위임하기 위해 띄우는 하위 에이전트. 컨텍스트와 소유권이 분리되므로, 이 저장소의 규칙에서는 기본적으로 사용하지 않습니다.
 
 참고: [Issue #3](https://github.com/usagi-ai-kr/usagi/issues/3) 문서화됨
+
+<a id="triage"></a>
+## triage
+
+**트리아지**
+
+실패·지연·차단을 원인별로 분류해 다음 행동을 정하는 절차. 예측 실패·역량 부족·외부 문제·재시도 가능한 불일치로 나눕니다.
+
+참고: [Issue #9](https://github.com/usagi-ai-kr/usagi/issues/9) 운영 노하우, [PR #12](https://github.com/usagi-ai-kr/usagi/pull/12) §2
 
 <a id="unit-work-unit"></a>
 ## unit / work unit
