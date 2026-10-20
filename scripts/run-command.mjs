@@ -32,6 +32,7 @@ Options:
   --out-dir <dir>      required; stdout/stderr files are written here
   --cwd <dir>          working directory (default: current directory)
   --timeout-ms <n>     kill the process tree after n ms: integer 1-2147483647 (default: 60000)
+  --max-output-bytes <n>  keep at most n bytes per stream, drop the rest (default: 1048576)
   --redact <text>      repeatable; replace this literal with [REDACTED]; recorded as literal:N, never stored
   --json               print only the evidence JSON envelope to stdout
   --help               show this help
@@ -53,6 +54,7 @@ function parseArgs(argv) {
     outDir: null,
     cwd: process.cwd(),
     timeoutMs: 60000,
+    maxOutputBytes: 1048576,
     redact: [],
     json: false,
     help: false,
@@ -78,6 +80,9 @@ function parseArgs(argv) {
         break;
       case "--timeout-ms":
         options.timeoutMs = readValue();
+        break;
+      case "--max-output-bytes":
+        options.maxOutputBytes = readValue();
         break;
       case "--redact":
         options.redact.push(readValue());
@@ -113,16 +118,20 @@ function parseArgv(raw) {
   return parsed;
 }
 
-function parseTimeoutMs(raw) {
+function parsePositiveInt(raw, flag, note) {
   const value = Number(raw);
-  // setTimeout clamps values above 2^31-1 (Node warns and treats them as 1ms),
-  // so only accept positive integers inside the supported range.
   if (!Number.isInteger(value) || value <= 0 || value > 2147483647) {
     throw new UsageError(
-      `--timeout-ms must be a positive integer within the setTimeout range (1-2147483647), got: ${raw}`,
+      `${flag} must be a positive integer (1-2147483647)${note}, got: ${raw}`,
     );
   }
   return value;
+}
+
+function parseTimeoutMs(raw) {
+  // setTimeout clamps values above 2^31-1 (Node warns and treats them as 1ms),
+  // so only accept positive integers inside the supported range.
+  return parsePositiveInt(raw, "--timeout-ms", " within the setTimeout range");
 }
 
 function collectRedactions(literals) {
@@ -194,7 +203,7 @@ function killTree(child) {
   }
 }
 
-function runCommand(command, { cwd, timeoutMs }) {
+function runCommand(command, { cwd, timeoutMs, maxOutputBytes }) {
   return new Promise((settle) => {
     const startedAt = Date.now();
     let child;
@@ -213,8 +222,28 @@ function runCommand(command, { cwd, timeoutMs }) {
     let timedOut = false;
     const stdoutChunks = [];
     const stderrChunks = [];
-    child.stdout.on("data", (chunk) => stdoutChunks.push(chunk));
-    child.stderr.on("data", (chunk) => stderrChunks.push(chunk));
+    let stdoutSize = 0;
+    let stderrSize = 0;
+    let stdoutTruncated = false;
+    let stderrTruncated = false;
+    // Streams keep flowing after the cap so the child never blocks on a full
+    // pipe; excess bytes are dropped and only the truncation flag is kept.
+    child.stdout.on("data", (chunk) => {
+      if (stdoutSize + chunk.length <= maxOutputBytes) {
+        stdoutChunks.push(chunk);
+        stdoutSize += chunk.length;
+      } else {
+        stdoutTruncated = true;
+      }
+    });
+    child.stderr.on("data", (chunk) => {
+      if (stderrSize + chunk.length <= maxOutputBytes) {
+        stderrChunks.push(chunk);
+        stderrSize += chunk.length;
+      } else {
+        stderrTruncated = true;
+      }
+    });
 
     const timer = setTimeout(() => {
       timedOut = true;
@@ -235,6 +264,8 @@ function runCommand(command, { cwd, timeoutMs }) {
         timedOut,
         stdout: Buffer.concat(stdoutChunks),
         stderr: Buffer.concat(stderrChunks),
+        stdoutTruncated,
+        stderrTruncated,
         startedAt,
         finishedAt: Date.now(),
       });
@@ -279,11 +310,16 @@ function emitHuman(envelope, redacted) {
     );
   }
   console.log(`command: ${envelope.command.join(" ")}`);
+  const markTruncated = (truncated) => (truncated ? ", truncated" : "");
   if (envelope.stdout_ref) {
-    console.log(`stdout: ${envelope.stdout_ref} (${redacted.stdoutBytes} bytes)`);
+    console.log(
+      `stdout: ${envelope.stdout_ref} (${redacted.stdoutBytes} bytes${markTruncated(envelope.stdout_truncated)})`,
+    );
   }
   if (envelope.stderr_ref) {
-    console.log(`stderr: ${envelope.stderr_ref} (${redacted.stderrBytes} bytes)`);
+    console.log(
+      `stderr: ${envelope.stderr_ref} (${redacted.stderrBytes} bytes${markTruncated(envelope.stderr_truncated)})`,
+    );
   }
   if (!redacted.clean) {
     console.log(`redactions applied: ${envelope.redactions.join(", ")}`);
@@ -326,6 +362,13 @@ async function main(argv) {
     return usageFailure(jsonMode, error.message, options.redact);
   }
 
+  let maxOutputBytes;
+  try {
+    maxOutputBytes = parsePositiveInt(options.maxOutputBytes, "--max-output-bytes", "");
+  } catch (error) {
+    return usageFailure(jsonMode, error.message, options.redact);
+  }
+
   const cwd = resolve(options.cwd);
   try {
     if (!statSync(cwd).isDirectory()) {
@@ -362,7 +405,7 @@ async function main(argv) {
   ];
   const recordedCommand = command.map((part) => applyRedactions(part, values));
 
-  const outcome = await runCommand(command, { cwd, timeoutMs });
+  const outcome = await runCommand(command, { cwd, timeoutMs, maxOutputBytes });
 
   const envelope = {
     schema_version: 1,
@@ -379,6 +422,8 @@ async function main(argv) {
     exit_code: null,
     signal: null,
     timed_out: false,
+    stdout_truncated: false,
+    stderr_truncated: false,
     stdout_ref: applyRedactions(stdoutPath, values),
     stderr_ref: applyRedactions(stderrPath, values),
     artifacts: [],
@@ -422,10 +467,13 @@ async function main(argv) {
   envelope.exit_code = outcome.code;
   envelope.signal = outcome.signal;
   envelope.timed_out = outcome.timedOut;
+  envelope.stdout_truncated = outcome.stdoutTruncated;
+  envelope.stderr_truncated = outcome.stderrTruncated;
   envelope.redactions = redactions;
-  // complete only when the exit code is known; signal death (including our own
-  // timeout kill) leaves exit_code null and is partial.
-  if (envelope.timed_out || envelope.exit_code === null) {
+  // complete only when the exit code is known AND no output was dropped;
+  // truncation means evidence is incomplete even on exit 0.
+  const truncated = envelope.stdout_truncated || envelope.stderr_truncated;
+  if (envelope.timed_out || envelope.exit_code === null || truncated) {
     envelope.completeness = "partial";
   } else {
     envelope.completeness = "complete";

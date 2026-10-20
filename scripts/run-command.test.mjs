@@ -44,6 +44,8 @@ const ENVELOPE_FIELDS = [
   "exit_code",
   "signal",
   "timed_out",
+  "stdout_truncated",
+  "stderr_truncated",
   "stdout_ref",
   "stderr_ref",
   "artifacts",
@@ -78,6 +80,8 @@ test("success captures stdout and reports exit 0", () => {
   assert.equal(envelope.exit_code, 0);
   assert.equal(envelope.timed_out, false);
   assert.equal(envelope.completeness, "complete");
+  assert.equal(envelope.stdout_truncated, false);
+  assert.equal(envelope.stderr_truncated, false);
   assert.ok(envelope.stdout_ref.startsWith(outDir));
   assert.ok(envelope.stderr_ref.startsWith(outDir));
   const stdout = readFileSync(envelope.stdout_ref, "utf8");
@@ -159,6 +163,20 @@ test("invalid argv-json and missing args exit 2", () => {
     ]).status,
     2,
   );
+  for (const value of ["0", "-5", "1.5", "abc"]) {
+    assert.equal(
+      run([
+        "--argv-json",
+        argvOf(process.execPath, "-e", "1"),
+        "--out-dir",
+        outDir,
+        "--max-output-bytes",
+        value,
+      ]).status,
+      2,
+      `--max-output-bytes ${value} must exit 2`,
+    );
+  }
 });
 
 test("cwd with spaces and Korean works", () => {
@@ -268,7 +286,7 @@ test("output files exist and sizes match non-empty output", () => {
 test("--help exits 0 and documents the flags", () => {
   const result = run(["--help"]);
   assert.equal(result.status, 0);
-  for (const flag of ["--argv-json", "--out-dir", "--cwd", "--timeout-ms", "--redact", "--json"]) {
+  for (const flag of ["--argv-json", "--out-dir", "--cwd", "--timeout-ms", "--max-output-bytes", "--redact", "--json"]) {
     assert.ok(result.stdout.includes(flag), `help must document ${flag}`);
   }
 });
@@ -371,6 +389,49 @@ test("--timeout-ms outside the setTimeout range is rejected with exit 2", () => 
     ]);
     assert.equal(result.status, 2, `--timeout-ms ${value} must exit 2`);
   }
+});
+
+test("large output is truncated at the cap and reported partial", () => {
+  const outDir = makeOutDir();
+  const cap = 65536;
+  const result = run([
+    "--argv-json",
+    argvOf(process.execPath, "-e", "for(let i=0;i<200000;i++){console.log('0123456789ABCDEF')}"),
+    "--out-dir",
+    outDir,
+    "--max-output-bytes",
+    String(cap),
+    "--json",
+  ]);
+  assert.equal(result.status, 0);
+  const envelope = JSON.parse(result.stdout);
+  assert.equal(envelope.exit_code, 0);
+  assert.equal(envelope.stdout_truncated, true);
+  assert.equal(envelope.stderr_truncated, false);
+  assert.equal(envelope.completeness, "partial");
+  const size = statSync(envelope.stdout_ref).size;
+  assert.ok(size > 0 && size <= cap, `truncated file must fit the cap, got ${size}`);
+});
+
+test("infinite output drains without hanging the runner", () => {
+  const outDir = makeOutDir();
+  const result = run([
+    "--argv-json",
+    argvOf(process.execPath, "-e", "while(true){console.log('0123456789ABCDEF')}"),
+    "--out-dir",
+    outDir,
+    "--max-output-bytes",
+    "65536",
+    "--timeout-ms",
+    "500",
+    "--json",
+  ]);
+  assert.equal(result.status, 124);
+  const envelope = JSON.parse(result.stdout);
+  assert.equal(envelope.timed_out, true);
+  assert.equal(envelope.stdout_truncated, true);
+  assert.equal(envelope.completeness, "partial");
+  assert.ok(statSync(envelope.stdout_ref).size <= 65536);
 });
 
 test("signal termination without timeout reports partial completeness", () => {
