@@ -47,6 +47,7 @@ const requiredFiles = [
   "PROMPTS.md",
   "docs/glossary.md",
   "docs/glossary/categories.json",
+  "docs/human-writing-contract.md",
   "docs/rule-file-guidelines.md",
   "docs/harness-starter/README.md",
   "docs/harness-starter/templates/AGENTS.md",
@@ -60,11 +61,14 @@ const requiredFiles = [
   "docs/wiki/What-is-Harness-Engineering.md",
   "docs/wiki/Workflows.md",
   ".agents/skills/glossary/SKILL.md",
+  ".agents/skills/human-doc/SKILL.md",
   ".github/labels.json",
   ".github/branch-protection.json",
   ".github/workflows/ci.yml",
   ".github/workflows/release.yml",
   "scripts/build-glossary-index.mjs",
+  "scripts/check-human-doc.mjs",
+  "scripts/check-human-doc.test.mjs",
   "scripts/lib/glossary.mjs",
   "scripts/sync-labels.sh",
   "scripts/sync-wiki.sh",
@@ -75,6 +79,7 @@ for (const path of requiredFiles) existingFile(path);
 
 for (const path of [
   "scripts/build-glossary-index.mjs",
+  "scripts/check-human-doc.mjs",
   "scripts/sync-labels.sh",
   "scripts/sync-wiki.sh",
   "scripts/apply-repo-policy.sh",
@@ -315,7 +320,10 @@ function checkWorkflow() {
     "push:",
     "name: validate",
     "node scripts/validate.mjs",
-    "skills-ref@0.1.5 validate .agents/skills/glossary",
+    "skills-ref@0.1.5",
+    "for skill in .agents/skills/*",
+    "node --test scripts/check-human-doc.test.mjs",
+    "node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md",
     "@google/design.md@0.4.0 lint DESIGN.md",
     "permissions:",
     "contents: read",
@@ -327,41 +335,49 @@ function checkWorkflow() {
 }
 
 function checkSkill() {
-  const path = join(root, ".agents/skills/glossary/SKILL.md");
-  if (!existsSync(path)) return;
-  const text = read(path);
-  const frontmatter = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-  if (!frontmatter) {
-    fail(".agents/skills/glossary/SKILL.md: missing YAML frontmatter");
-    return;
-  }
+  const skillsDirectory = join(root, ".agents/skills");
+  if (!existsSync(skillsDirectory)) return;
 
-  const field = (name) => {
-    const match = frontmatter[1].match(new RegExp(`^${name}:\\s*(.+)$`, "m"));
-    return match ? match[1].trim() : "";
-  };
-  const name = field("name");
-  const description = field("description");
-  const compatibility = field("compatibility");
-  const body = text.slice(frontmatter[0].length);
+  for (const entry of readdirSync(skillsDirectory, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const rel = `.agents/skills/${entry.name}/SKILL.md`;
+    const path = join(root, rel);
+    if (!existsSync(path)) continue;
 
-  if (name !== "glossary") {
-    fail(`.agents/skills/glossary/SKILL.md: name must be "glossary", got "${name}"`);
-  }
-  if (name.length > 64 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
-    fail(".agents/skills/glossary/SKILL.md: name must be 1-64 lowercase alphanumeric/hyphen characters");
-  }
-  if (description.length < 1 || description.length > 1024) {
-    fail(".agents/skills/glossary/SKILL.md: description must be 1-1024 characters");
-  }
-  if (compatibility && (compatibility.length < 1 || compatibility.length > 500)) {
-    fail(".agents/skills/glossary/SKILL.md: compatibility must be 1-500 characters");
-  }
-  if (body.trim() === "") {
-    fail(".agents/skills/glossary/SKILL.md: empty instructions body");
-  }
-  if (body.split(/\r?\n/).length > 500) {
-    fail(".agents/skills/glossary/SKILL.md: body should stay under 500 lines");
+    const text = read(path);
+    const frontmatter = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+    if (!frontmatter) {
+      fail(`${rel}: missing YAML frontmatter`);
+      continue;
+    }
+
+    const field = (name) => {
+      const match = frontmatter[1].match(new RegExp(`^${name}:\\s*(.+)$`, "m"));
+      return match ? match[1].trim() : "";
+    };
+    const name = field("name");
+    const description = field("description");
+    const compatibility = field("compatibility");
+    const body = text.slice(frontmatter[0].length);
+
+    if (name !== entry.name) {
+      fail(`${rel}: name must be "${entry.name}", got "${name}"`);
+    }
+    if (name.length > 64 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
+      fail(`${rel}: name must be 1-64 lowercase alphanumeric/hyphen characters`);
+    }
+    if (description.length < 1 || description.length > 1024) {
+      fail(`${rel}: description must be 1-1024 characters`);
+    }
+    if (compatibility && (compatibility.length < 1 || compatibility.length > 500)) {
+      fail(`${rel}: compatibility must be 1-500 characters`);
+    }
+    if (body.trim() === "") {
+      fail(`${rel}: empty instructions body`);
+    }
+    if (body.split(/\r?\n/).length > 500) {
+      fail(`${rel}: body should stay under 500 lines`);
+    }
   }
 }
 
@@ -462,6 +478,21 @@ function checkContributing() {
   }
 }
 
+function checkSectionNumbers() {
+  for (const rel of ["AGENTS.md", "CONTRIBUTING.md"]) {
+    const path = join(root, rel);
+    if (!existsSync(path)) continue;
+    const numbers = [...read(path).matchAll(/^## (\d+)\./gm)].map((match) => match[1]);
+    const seen = new Set();
+    for (const number of numbers) {
+      if (seen.has(number)) {
+        fail(`${rel}: duplicate top-level section number ${number}`);
+      }
+      seen.add(number);
+    }
+  }
+}
+
 function checkPromptLibrary() {
   const path = join(root, "PROMPTS.md");
   if (!existsSync(path)) return;
@@ -516,6 +547,8 @@ function checkAgentsBudget() {
     "docs/glossary.md",
     "DESIGN.md",
     ".agents/skills/glossary/SKILL.md",
+    "docs/human-writing-contract.md",
+    ".agents/skills/human-doc/SKILL.md",
     "docs/rule-file-guidelines.md",
     "docs/harness-starter/README.md",
     "PROMPTS.md",
@@ -573,6 +606,7 @@ checkSkill();
 checkDesign();
 checkReadme();
 checkContributing();
+checkSectionNumbers();
 checkPromptLibrary();
 checkHarnessStarter();
 checkAgentsBudget();

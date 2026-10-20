@@ -34,8 +34,17 @@ jobs:
       - name: Validate repository content
         run: node scripts/validate.mjs
 
-      - name: Validate Agent Skill
-        run: npx --yes skills-ref@0.1.5 validate .agents/skills/glossary
+      - name: Validate Agent Skills
+        run: |
+          for skill in .agents/skills/*; do
+            npx --yes skills-ref@0.1.5 validate "$skill"
+          done
+
+      - name: Test human-doc checker
+        run: node --test scripts/check-human-doc.test.mjs
+
+      - name: Check contract metadata
+        run: node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 
       - name: Lint DESIGN.md
         run: npx --yes @google/design.md@0.4.0 lint DESIGN.md

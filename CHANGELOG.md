@@ -4,6 +4,10 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Added
+
+- Reader-focused writing contract, `human-doc` skill, and advisory metadata/length checker for human-facing documents.
+
 ### Changed
 
 - Expanded the harness starter guide with a role table and a work-unit brief example.
