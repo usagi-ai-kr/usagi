@@ -6,6 +6,7 @@ All notable changes to this project are documented here. This project follows [S
 
 ### Added
 
+- PRD/SRS/ADR review-path contract, minimal templates, and document-review skill for project-scale decisions.
 - E2E/visual result contract, JSON schema, and fail-closed validator for commit, viewport, budget and artifact evidence.
 - Toolchain contract and non-destructive doctor for dependency and OS diagnostics.
 - Architecture responsibility/dependency contract, example map, and static layer-dependency checker.
