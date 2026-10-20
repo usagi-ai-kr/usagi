@@ -4,6 +4,8 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-20
+
 ### Added
 
 - Harness starter guide and minimal templates for `AGENTS.md`, `CONTRIBUTING.md`, labels, branch protection, and CI.
