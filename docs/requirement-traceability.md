@@ -38,25 +38,70 @@ ID 뒤에 한국어 조사가 붙으면 선언이 아니라 본문 언급으로 
 
 위 세 줄은 각각 선언, 매핑 행, 참조입니다.
 
-코드펜스 안의 내용은 검사에서 제외합니다. 예시로 쓰는 ID는 코드펜스 안에 두면 요구사항으로 세지지 않습니다. 참고 문서와 템플릿을 검사 대상에서 완전히 분리하는 일은 [#59의 남은 범위](https://github.com/usagi-ai-kr/usagi/issues/59#issuecomment-6287086018)에 남아 있습니다.
+코드펜스 안의 내용은 검사에서 제외합니다. 예시로 쓰는 ID는 코드펜스 안에 두면 요구사항으로 세지지 않습니다. 참고 템플릿도 코드펜스 안에 두면 됩니다.
 
-## 3. ADR 레지스트리
+## 3. 템플릿 연결
 
-ADR 번호는 두 가지 경우에 선언된 것으로 봅니다.
+살아 있는 문서는 frontmatter에 `template:`을 적어 사용한 템플릿을 밝힙니다.
+
+```yaml
+---
+template: SRS
+---
+```
+
+- 레지스트리는 `--docs` 기준 `<docs>/document-templates.md`에서 찾습니다.
+- 레지스트리는 머리글 줄에 `ID`와 `template`가 있는 표입니다. 첫 열이 등록된 ID입니다.
+- 선언한 ID가 레지스트리에 없으면 `unknown_template` 오류입니다.
+- 레지스트리 파일이 없거나 레지스트리 표가 비어 있으면 `template_registry_unavailable` 경고입니다. 조용히 통과하지도 실패하지도 않습니다.
+- `template:`을 적지 않은 문서는 light 경로에서 그대로 통과합니다.
+- ID는 대소문자를 구분합니다. `PRD`, `SRS`, `ADR`처럼 대문자로 적습니다.
+
+## 4. 추측 표시 검사
+
+자리표시자를 남긴 요구사항은 추적할 수 없습니다. 표시 목록은 고정입니다.
+
+- `TBD`, `TODO`, `FIXME`
+- `가정:`, `추정:`, `미정`, `추후 결정`, `확인 필요`
+
+표시는 살아 있는 요구사항 선언 줄, 매핑 행, ADR 선언 줄, frontmatter에서만 봅니다. 코드펜스 예시와 일반 본문은 보지 않습니다. 발견하면 `speculation_marker` 오류이며 light·full 두 모드에서 같습니다.
+
+## 5. ADR 레지스트리와 대체 관계
+
+ADR 번호는 세 가지 경우에 선언된 것으로 봅니다.
 
 - 파일명에 `ADR-<번호>`가 들어간 문서가 있는 경우.
 - 줄의 첫 토큰이 `ADR-<번호>`인 선언 줄이 있는 경우.
+- frontmatter에 `adr: ADR-<번호>`가 적힌 경우.
 
 그 밖의 `ADR-<번호>` 언급은 참조입니다. light 모드에서는 경고, full 모드에서는 오류로 보고합니다. ADR 참조는 같은 줄에 있는 요구사항에만 연결됩니다. 결정 기록을 다른 줄에 적으면 full 모드에서 연결이 없습니다.
 
-## 4. 모드
+ADR 문서는 frontmatter로 대체(superseded) 관계를 적습니다.
+
+```yaml
+---
+adr: ADR-002
+status: superseded
+superseded_by: ADR-003
+supersedes: [ADR-001]
+---
+```
+
+- `status: superseded`는 `superseded_by`를 요구합니다. 없으면 `adr_supersede_missing_link`입니다.
+- `superseded_by`만 있고 `status: superseded`가 없으면 `adr_supersede_inconsistent`입니다.
+- 가리키는 대상 ADR이 없으면 `adr_supersede_missing_link`입니다.
+- 양쪽이 서로를 가리켜야 합니다. 되돌리는 링크가 없으면 `adr_supersede_missing_link`입니다.
+- 자기 자신을 가리키면 `adr_supersede_self`입니다.
+- 대체 사슬이 순환하면 `adr_supersede_cycle`입니다.
+
+## 6. 모드
 
 - `light`: 요구사항 ID가 없어도 통과합니다. ID가 있으면 중복 선언, 모르는 참조, 선언 없는 매핑 행을 오류로 보고합니다.
 - `full`: light 검사에 더해, 선언된 모든 ID에 매핑 행과 ADR 참조가 있어야 합니다.
 
-매핑 행만 있고 선언이 없는 ID는 두 모드에서 모두 오류입니다. 매핑 행은 모르는 ID를 가리키는 참조이기 때문입니다.
+매핑 행만 있고 선언이 없는 ID는 두 모드에서 모두 오류입니다. 매핑 행은 모르는 ID를 가리키는 참조이기 때문입니다. 템플릿·표시·대체 관계 검사도 두 모드에서 같습니다.
 
-## 5. 사용법
+## 7. 사용법
 
 ```bash
 node scripts/check-requirement-trace.mjs --docs docs --mode light
@@ -76,32 +121,36 @@ node scripts/check-requirement-trace.mjs --docs docs --mode full --json
 
 성공 예는 저장소 문서 트리, 실패 예는 같은 트리의 전체 모드입니다. 프로젝트 문서는 `full` 모드로 검사하고 참고 문서·템플릿은 검사 대상에서 빼는 구성을 권합니다.
 
-## 6. JSON 리포트
+## 8. JSON 리포트
 
 `schema_version`, `mode`, `docs`, `requirements[]`, `errors[]`, `warnings[]`, `summary`를 냅니다.
 
-`requirements[]` 항목은 `id`, `files[]`, `declared`, `mapped`, `adr_refs[]`로 이루어집니다. `summary`는 파일 수, 요구사항 수, 매핑 수, ADR 연결 수, 오류 수, 경고 수, 상태를 담습니다.
+`requirements[]` 항목은 `id`, `files[]`, `declared`, `mapped`, `adr_refs[]`로 이루어집니다. `summary`는 파일 수, 요구사항 수, 매핑 수, ADR 연결 수를 담습니다. 템플릿 선언 수와 표시 검출 수, 대체 관계 수도 담습니다. 마지막으로 오류 수, 경고 수, 상태를 담습니다.
 
-## 7. 검사하지 않는 것
+## 9. 검사하지 않는 것
 
 - 요구사항 내용이 타당한지, 시나리오가 충분한지 판단하지 않습니다.
 - 그 테스트가 실제로 요구사항을 증명하는지 확인하지 않습니다.
 - 매핑 행 둘째 칸에 적힌 파일이 실제로 있는지 보지 않습니다.
 - 표 머리글을 읽지 않습니다. 둘째 칸을 테스트 칸으로 가정합니다.
+- 표시 목록에 없는 표현은 검사하지 않습니다.
+- 대체 관계는 frontmatter에 `adr:`가 있는 문서에서만 읽습니다.
+- 레지스트리 ID가 실제로 그 템플릿 문서를 가리키는지는 보지 않습니다.
 
 내용 판단은 [document-review 스킬](../.agents/skills/document-review/SKILL.md)과 리뷰어 몫입니다. 기계 검사는 통과 근거가 아니라 확인의 출발점입니다.
 
-## 8. 미룬 범위
+## 10. 구현된 범위와 남은 한계
 
-[#59의 남은 범위 체크리스트](https://github.com/usagi-ai-kr/usagi/issues/59#issuecomment-6287086018)가 다음 항목을 추적합니다.
+[#59의 남은 범위 체크리스트](https://github.com/usagi-ai-kr/usagi/issues/59#issuecomment-6287086018)의 세 항목은 이 문서에 구현했다. §3은 템플릿 연결, §4는 추측 표시, §5는 대체 관계다. 각 항목에 정상·실패 fixture 테스트가 있다.
 
-- 문서 템플릿 연결: `docs/document-templates.md`의 템플릿 ID와 검사 대상 문서를 분리해 연결
-- 금지된 추측 표시(speculation marker) 검사
-- ADR 대체(superseded) 관계와 링크 누락 검사
+남은 한계는 다음과 같다.
 
-미룬 이유는 이 이슈가 최소 동작을 먼저 고정하는 범위였기 때문입니다. ID 추출·매핑·light/full 경로 검사가 그 범위입니다. 완료 조건은 각 항목에 정상·실패 fixture 테스트가 있고 이 문서에 사용법과 한계가 적히는 것입니다.
+- 참고 문서와 템플릿을 검사 대상에서 완전히 분리하는 것은 아직 아니다. 코드펜스 안의 예시만 제외된다.
+- 레지스트리 ID와 템플릿 문서의 대응은 사람이 확인해야 한다.
+- 대체 관계는 `adr:` frontmatter가 있는 문서에서만 읽는다. 파일명만으로 정한 ADR에는 대체 관계를 쓸 수 없다.
+- 표시 목록은 고정이라 새 표현을 넣으려면 목록과 검사를 함께 고쳐야 한다.
 
-## 9. 관련
+## 11. 관련
 
 - [#59](https://github.com/usagi-ai-kr/usagi/issues/59) — PRD/SRS/ADR 요구사항 추적성 검사기
 - [#46](https://github.com/usagi-ai-kr/usagi/issues/46) — 프로젝트 규모별 문서 검토 경로 제안
