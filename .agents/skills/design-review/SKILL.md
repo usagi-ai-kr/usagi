@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: Plan or review visual work against the DESIGN.md tokens. Classifies the request, selects design references, records a design decision, and gathers responsive, keyboard, contrast, font-loading, share-preview, and Lighthouse evidence.
+description: Plan or review visual work against the DESIGN.md tokens. Classifies the request, selects design references, records a design decision, and gathers responsive, keyboard, contrast, font-loading, share-preview, and Lighthouse evidence. Use when a change touches UI, styling, colors, typography, layout, or DESIGN.md.
 compatibility: Requires a repository checkout. Lighthouse and browser checks are optional and are not part of the default CI run.
 metadata:
   version: "1.0"

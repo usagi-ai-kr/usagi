@@ -1,6 +1,6 @@
 ---
 name: document-review
-description: Choose between the light ADR-centric path and the full PRD→SRS→ADR path, review the resulting documents and traceability, and keep document approval separate from implementation, deploy and test approval.
+description: Choose between the light ADR-centric path and the full PRD→SRS→ADR path, review the resulting documents and traceability, and keep document approval separate from implementation, deploy and test approval. Use when writing or reviewing a PRD, SRS or ADR, or deciding how much design documentation a project needs.
 ---
 
 # Document review

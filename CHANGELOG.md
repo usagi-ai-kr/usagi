@@ -4,8 +4,13 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Added
+
+- Claude Code skill discovery through a `.claude/skills` symlink to `.agents/skills`, with validation.
+
 ### Changed
 
+- Skill descriptions now include `Use when ...` triggers for client auto-invocation, enforced by validation.
 - Updated the README version summary and toolchain example for v0.2.0.
 
 ## [0.2.0] - 2026-10-20

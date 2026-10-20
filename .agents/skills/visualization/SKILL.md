@@ -1,6 +1,6 @@
 ---
 name: visualization
-description: Choose Markdown/Mermaid-first or a specialized visualization tool per the policy, verify real GitHub rendering and accessibility, and keep diagram sources and artifacts versioned and safe.
+description: Choose Markdown/Mermaid-first or a specialized visualization tool per the policy, verify real GitHub rendering and accessibility, and keep diagram sources and artifacts versioned and safe. Use when adding or reviewing a diagram, chart, Mermaid block or SVG in repository documents.
 ---
 
 # Visualization

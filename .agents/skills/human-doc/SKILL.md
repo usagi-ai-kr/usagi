@@ -1,6 +1,6 @@
 ---
 name: human-doc
-description: Draft or review human-facing proposals, retrospectives, examples, learning resources and job-search documents with clear narrative, metadata and concise length.
+description: Draft or review human-facing proposals, retrospectives, examples, learning resources and job-search documents with clear narrative, metadata and concise length. Use when writing README, wiki pages or any document meant for people rather than agents.
 compatibility: Node.js 22 recommended for optional length and metadata checks.
 ---
 

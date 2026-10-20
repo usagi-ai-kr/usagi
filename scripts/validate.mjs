@@ -124,6 +124,21 @@ if (existsSync(claudePath)) {
   }
 }
 
+const claudeSkillsPath = join(root, ".claude/skills");
+if (existsSync(join(root, ".agents/skills"))) {
+  let claudeSkillsStat;
+  try {
+    claudeSkillsStat = lstatSync(claudeSkillsPath);
+  } catch {
+    fail(".claude/skills must be a symlink to ../.agents/skills");
+  }
+  if (claudeSkillsStat && !claudeSkillsStat.isSymbolicLink()) {
+    fail(".claude/skills must be a symlink to ../.agents/skills");
+  } else if (claudeSkillsStat && readlinkSync(claudeSkillsPath) !== "../.agents/skills") {
+    fail(`.claude/skills must point to ../.agents/skills, got ${readlinkSync(claudeSkillsPath)}`);
+  }
+}
+
 function walkMarkdown(dir, output = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === ".git" || entry.name === "node_modules" || entry.name === "tmp") continue;
@@ -396,6 +411,9 @@ function checkSkill() {
     }
     if (description.length < 1 || description.length > 1024) {
       fail(`${rel}: description must be 1-1024 characters`);
+    }
+    if (!/\bUse when\b/.test(description)) {
+      fail(`${rel}: description must include a "Use when ..." trigger`);
     }
     if (compatibility && (compatibility.length < 1 || compatibility.length > 500)) {
       fail(`${rel}: compatibility must be 1-500 characters`);

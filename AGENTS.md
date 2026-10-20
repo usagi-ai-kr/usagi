@@ -10,7 +10,7 @@
 - `DESIGN.md`: 시각 아이덴티티 토큰과 rationale.
 - `docs/glossary/`: 용어 원본. `docs/glossary.md`는 생성 인덱스입니다.
 - `docs/wiki/`: 사람용 위키 원본. `scripts/sync-wiki.sh`로만 게시합니다.
-- `.agents/skills/`: 재사용 가능한 에이전트 절차.
+- `.agents/skills/`: 재사용 가능한 에이전트 절차. `.claude/skills`는 Claude Code용 심볼릭 링크입니다.
 
 ## 1. 먼저 읽을 것
 

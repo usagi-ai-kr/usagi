@@ -1,6 +1,6 @@
 ---
 name: e2e-evidence
-description: Validate E2E and visual run results against the fail-closed result contract, review artifact evidence, and report the automated verdict and reviewer judgment separately.
+description: Validate E2E and visual run results against the fail-closed result contract, review artifact evidence, and report the automated verdict and reviewer judgment separately. Use when an E2E, browser, screenshot or visual-regression result needs to be checked or reported.
 ---
 
 # E2E evidence review
