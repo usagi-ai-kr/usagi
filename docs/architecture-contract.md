@@ -51,7 +51,7 @@ UI와 Infra는 외곽 어댑터다. App과 Domain은 포트를 정의하고, 조
 - Integration: DB·브로커·외부 어댑터와 실제 설정·마이그레이션의 계약 호환성을 확인한다.
 - Regression: 재현된 결함마다 실패→수정→재실행 증거를 남기고 전체 게이트도 통과한다.
 
-증거 바인딩(커밋 SHA, 환경 fingerprint)과 게이트 적용 여부 기록은 [delegation-handoff-evidence.md](delegation-handoff-evidence.md)와 [multi-agent-orchestration-contract.md](multi-agent-orchestration-contract.md)를 따른다. BDD 형식을 모든 테스트에 강제하지 않는다. 어떤 수준을 적용했는지(또는 생략했는지와 이유)를 보고서에 기록한다. Phase 1에는 실행기가 없으므로, 수준 정의와 기록 규칙만 계약한다.
+증거 바인딩(커밋 SHA, 환경 fingerprint)과 게이트 적용 여부 기록은 [delegation-handoff-evidence.md](delegation-handoff-evidence.md)와 [multi-agent-orchestration-contract.md](multi-agent-orchestration-contract.md)를 따른다. BDD 형식을 모든 테스트에 강제하지 않는다. 어떤 수준을 적용했는지(또는 생략했는지와 이유)를 보고서에 기록한다. 실행과 증거 결속은 [test-gate-contract.md](test-gate-contract.md)가 맡는다.
 
 ## 7. 검사기 계약
 
@@ -72,7 +72,7 @@ check-layer-deps: violations (1 violation, 0 exceptions applied)
 
 ## 8. 후속 단계
 
-TDD/BDD 실행기, 언어별 어댑터(Python·Go 등, 동일 검사 계약), 이 저장소 자체의 CI 아키텍처 게이트, 위반 검출률·누락률 측정. 공통 실행 증거 봉투는 #26이 소유하고 이 계약은 확장만 한다.
+언어별 어댑터(Python·Go 등, 동일 검사 계약), 이 저장소 자체의 CI 아키텍처 게이트, 위반 검출률·누락률 측정. TDD/BDD 실행기는 [test-gate-contract.md](test-gate-contract.md)가 이미 계약한다. 공통 실행 증거 봉투는 #26이 소유하고 이 계약은 확장만 한다.
 
 ## 9. 관련
 

@@ -13,6 +13,7 @@ All notable changes to this project are documented here. This project follows [S
 - Requirement traceability checker for PRD/SRS/ADR IDs, test mapping and ADR references; fenced example IDs are excluded from the scan.
 - Traceability checker follow-up: template registry linkage, speculation-marker detection, and ADR superseded-link validation.
 - Mermaid source/artifact static gate with manifest hash checks and SVG warnings.
+- Config-driven test gate runner with commit-bound evidence, a fixture stack and one BDD acceptance scenario.
 
 ### Changed
 
