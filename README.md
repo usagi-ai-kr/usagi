@@ -1,14 +1,26 @@
 # usagi
 
-```text
-https://github.com/usagi-ai-kr/usagi
+**Unsupervised Space for Agent Guidelines & Infrastructure.**
 
-이 저장소는 에이전트 운영 경험과 공통 규약을 모으는 공간이다.
-저장소가 로컬에 있으면 그 경로를, 없으면 위 GitHub 링크의 README.md, AGENTS.md, docs/glossary.md를 읽어라.
+여러 AI 에이전트를 안정적으로 운용하기 위한 경험과 공통 규약을 모으는 공간입니다. 특정 도구나 모델에 종속되지 않는 역할, 콜백, 검증, 복구 방식을 정리합니다.
 
-앞으로 내가 쓰는 낯선 용어는 docs/glossary/<category>.md의 정의와 출처를 근거로 쉬운 말로 설명해라.
-용어집에 없는 용어는 docs/glossary/categories.json에서 카테고리를 고르고, 기존 형식으로 항목 초안과 참고 출처를 제안해라.
-문서를 바꾸기 전에 계획을 보여주고, 승인 후 node scripts/build-glossary-index.mjs와 node scripts/validate.mjs를 실행해라.
-Wiki는 사람이 읽는 문서이므로 운영 규칙을 추가하지 말고, 게시가 필요하면 ./scripts/sync-wiki.sh를 사용해라.
-Wiki의 개념·플로우는 https://github.com/usagi-ai-kr/usagi/wiki 에서 읽어라.
-```
+## 무엇이 있나요
+
+- **[Glossary (용어집)](docs/glossary.md)** — harness, callback, outbox, idempotency, acceptance gate처럼 낯설 수 있는 용어를 5개 카테고리로 나눠 설명합니다.
+- **[Wiki](https://github.com/usagi-ai-kr/usagi/wiki)** — 하네스 엔지니어링이 무엇인지, 운영 플로우가 어떻게 흐르는지 사람이 읽기 쉽게 정리했습니다.
+- **[제안 문서](docs/)** — 하네스 계약, 위임·증거, triage·증거 보증에 대한 제안을 모아 두었습니다.
+- **[Changelog](CHANGELOG.md)** — 버전별 변경 이력.
+
+## 처음 읽는 순서
+
+1. [하네스 엔지니어링이란?](https://github.com/usagi-ai-kr/usagi/wiki/What-is-Harness-Engineering)
+2. [운영 플로우](https://github.com/usagi-ai-kr/usagi/wiki/Workflows)
+3. [Glossary Index](https://github.com/usagi-ai-kr/usagi/wiki/Glossary)
+
+## 현재 버전
+
+`v0.1.0` (2026-10-20) — 첫 공개 기준선. 자세한 내용은 [Changelog](CHANGELOG.md)를 참고하세요.
+
+## 기여
+
+AI 에이전트로 기여하려면 [CONTRIBUTING.md](CONTRIBUTING.md)를, 저장소 운영 규칙은 [AGENTS.md](AGENTS.md)를 읽으세요.

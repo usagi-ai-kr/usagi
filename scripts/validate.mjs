@@ -42,6 +42,8 @@ const requiredFiles = [
   "CLAUDE.md",
   "CONTRIBUTING.md",
   "DESIGN.md",
+  "VERSION",
+  "CHANGELOG.md",
   "docs/glossary.md",
   "docs/glossary/categories.json",
   "docs/wiki/Home.md",
@@ -52,6 +54,7 @@ const requiredFiles = [
   ".github/labels.json",
   ".github/branch-protection.json",
   ".github/workflows/ci.yml",
+  ".github/workflows/release.yml",
   "scripts/build-glossary-index.mjs",
   "scripts/lib/glossary.mjs",
   "scripts/sync-labels.sh",
@@ -402,23 +405,22 @@ function checkDesign() {
   }
 }
 
-function checkReadmePrompt() {
+function checkReadme() {
   const path = join(root, "README.md");
   if (!existsSync(path)) return;
   const text = read(path);
 
-  if (!text.includes("```text")) {
-    fail("README.md: expected a copy-paste prompt code block");
-  }
   for (const expected of [
-    "https://github.com/usagi-ai-kr/usagi",
     "https://github.com/usagi-ai-kr/usagi/wiki",
-    "AGENTS.md",
     "docs/glossary.md",
+    "CHANGELOG.md",
   ]) {
     if (!text.includes(expected)) {
-      fail(`README.md: prompt must mention "${expected}"`);
+      fail(`README.md: reader entry point must mention "${expected}"`);
     }
+  }
+  if (text.includes("```text")) {
+    fail("README.md: keep copy-paste prompts in CONTRIBUTING.md");
   }
 }
 
@@ -428,14 +430,57 @@ function checkContributing() {
   const text = read(path);
 
   for (const expected of [
+    "```text",
+    "https://github.com/usagi-ai-kr/usagi",
     "AGENTS.md",
+    "docs/glossary.md",
     "node scripts/validate.mjs",
     "squash merge",
     "type:*",
     "status:*",
+    "VERSION",
+    "CHANGELOG.md",
   ]) {
     if (!text.includes(expected)) {
-      fail(`CONTRIBUTING.md: agent checklist must mention "${expected}"`);
+      fail(`CONTRIBUTING.md: AI contribution guide must mention "${expected}"`);
+    }
+  }
+}
+
+function checkVersion() {
+  const versionPath = join(root, "VERSION");
+  const changelogPath = join(root, "CHANGELOG.md");
+  if (!existsSync(versionPath) || !existsSync(changelogPath)) return;
+
+  const version = read(versionPath).trim();
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+    fail(`VERSION: expected SemVer major.minor.patch, got "${version}"`);
+    return;
+  }
+
+  const changelog = read(changelogPath);
+  if (!changelog.includes("## [Unreleased]")) {
+    fail("CHANGELOG.md: missing [Unreleased] section");
+  }
+  if (!changelog.includes(`## [${version}]`)) {
+    fail(`CHANGELOG.md: missing section for VERSION ${version}`);
+  }
+}
+
+function checkReleaseWorkflow() {
+  const path = join(root, ".github/workflows/release.yml");
+  if (!existsSync(path)) return;
+  const text = read(path);
+
+  for (const expected of [
+    "tags:",
+    "contents: write",
+    "gh release create",
+    "CHANGELOG.md",
+    "actions/checkout@v7",
+  ]) {
+    if (!text.includes(expected)) {
+      fail(`.github/workflows/release.yml: missing "${expected}"`);
     }
   }
 }
@@ -444,10 +489,12 @@ const glossaryCount = checkGlossary();
 const labelCount = checkLabels();
 checkBranchProtection();
 checkWorkflow();
+checkReleaseWorkflow();
 checkSkill();
 checkDesign();
-checkReadmePrompt();
+checkReadme();
 checkContributing();
+checkVersion();
 
 if (errors.length > 0) {
   console.error(`✗ ${errors.length} validation error(s):`);
