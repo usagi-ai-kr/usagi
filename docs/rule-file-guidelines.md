@@ -1,13 +1,13 @@
 # Rule file guidelines (AGENTS.md)
 
-`AGENTS.md` is a router, not a handbook. Keep it short, specific, and stable; move details to canonical documents.
+`AGENTS.md` is a short navigation file, not a handbook. Keep it specific and stable; move details to reference documents.
 
-## Budget
+## Length limits
 
-- **≤100 lines and ≤800 words**, enforced by `scripts/validate.mjs`.
+- Keep `AGENTS.md` at or under **100 lines and 800 words**. CI enforces this.
 - Put exact commands early.
 - One rule per line; no duplicated prose.
-- Link canonical documents instead of copying them.
+- Link reference documents instead of copying them.
 - Rules that CI can enforce belong in CI, not in prose.
 
 ## Evidence
@@ -31,4 +31,4 @@
 
 - If a rule is repeated, move it to `CONTRIBUTING.md`, a skill, `DESIGN.md`, or a validator.
 - Keep release and versioning details in `CONTRIBUTING.md` and `CHANGELOG.md`.
-- Review the line and word budget in CI whenever `AGENTS.md` changes.
+- Review the line and word limits in CI whenever `AGENTS.md` changes.

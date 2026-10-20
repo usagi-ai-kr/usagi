@@ -1,6 +1,10 @@
 # CONTRIBUTING.md — AI contribution guide
 
-이 문서는 AI 에이전트가 이 저장소에 기여할 때 따르는 상세 가이드입니다. 사람이 읽는 문서는 `README.md`와 GitHub Wiki에 있습니다. [`AGENTS.md`](AGENTS.md)는 라우터이며, 규칙 파일 예산과 근거는 [`docs/rule-file-guidelines.md`](docs/rule-file-guidelines.md)를 따릅니다.
+> **운영 범위**: 이 저장소는 운영자 전용입니다. 외부 에이전트의 이슈/PR 기여는 받지 않습니다. 이 문서는 운영자가 사용하는 내부 에이전트용입니다.
+
+이 문서는 AI 에이전트가 이 저장소에 기여할 때 따르는 상세 가이드입니다. 사람이 읽는 문서는 `README.md`와 GitHub Wiki에 있습니다. [`AGENTS.md`](AGENTS.md)는 에이전트용 안내 파일이며, 규칙 파일 길이 기준과 근거는 [`docs/rule-file-guidelines.md`](docs/rule-file-guidelines.md)를 따릅니다.
+
+다른 프로젝트에 적용할 때는 [`PROMPTS.md`](PROMPTS.md)와 [`docs/harness-starter/`](docs/harness-starter/)를 참고합니다.
 
 ## 0. 복붙 프롬프트
 

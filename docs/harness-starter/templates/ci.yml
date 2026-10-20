@@ -1,0 +1,27 @@
+name: CI
+
+# Copy to .github/workflows/ci.yml and replace <VALIDATE_COMMAND>.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Validate
+        run: <VALIDATE_COMMAND>

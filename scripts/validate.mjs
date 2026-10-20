@@ -44,11 +44,19 @@ const requiredFiles = [
   "DESIGN.md",
   "VERSION",
   "CHANGELOG.md",
+  "PROMPTS.md",
   "docs/glossary.md",
   "docs/glossary/categories.json",
   "docs/rule-file-guidelines.md",
+  "docs/harness-starter/README.md",
+  "docs/harness-starter/templates/AGENTS.md",
+  "docs/harness-starter/templates/CONTRIBUTING.md",
+  "docs/harness-starter/templates/ci.yml",
+  "docs/harness-starter/templates/labels.json",
+  "docs/harness-starter/templates/branch-protection.json",
   "docs/wiki/Home.md",
   "docs/wiki/_Sidebar.md",
+  "docs/wiki/Harness-Starter.md",
   "docs/wiki/What-is-Harness-Engineering.md",
   "docs/wiki/Workflows.md",
   ".agents/skills/glossary/SKILL.md",
@@ -104,6 +112,9 @@ const linkPattern = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 
 for (const file of markdownFiles) {
   const rel = relative(root, file);
+  // Template files intentionally contain unresolved placeholder links.
+  if (rel.startsWith("docs/harness-starter/templates/")) continue;
+
   const text = read(file)
     .replace(/```[\s\S]*?```/g, "")
     .replace(/`[^`\n]*`/g, "");
@@ -414,6 +425,8 @@ function checkReadme() {
   for (const expected of [
     "https://github.com/usagi-ai-kr/usagi/wiki",
     "docs/glossary.md",
+    "docs/harness-starter/README.md",
+    "PROMPTS.md",
     "CHANGELOG.md",
   ]) {
     if (!text.includes(expected)) {
@@ -441,9 +454,46 @@ function checkContributing() {
     "status:*",
     "VERSION",
     "CHANGELOG.md",
+    "외부 에이전트",
   ]) {
     if (!text.includes(expected)) {
       fail(`CONTRIBUTING.md: AI contribution guide must mention "${expected}"`);
+    }
+  }
+}
+
+function checkPromptLibrary() {
+  const path = join(root, "PROMPTS.md");
+  if (!existsSync(path)) return;
+  const text = read(path);
+  const promptCount = (text.match(/```text/g) ?? []).length;
+
+  if (promptCount < 8) {
+    fail(`PROMPTS.md: expected at least 8 copy-paste prompts, got ${promptCount}`);
+  }
+  if (!text.includes("https://github.com/usagi-ai-kr/usagi")) {
+    fail("PROMPTS.md: prompts must reference the usagi repository");
+  }
+  if (!text.includes("docs/harness-starter/README.md")) {
+    fail("PROMPTS.md: must link the harness starter guide");
+  }
+}
+
+function checkHarnessStarter() {
+  const path = join(root, "docs/harness-starter/README.md");
+  if (!existsSync(path)) return;
+  const text = read(path);
+
+  for (const expected of [
+    "templates/AGENTS.md",
+    "templates/CONTRIBUTING.md",
+    "templates/labels.json",
+    "templates/branch-protection.json",
+    "templates/ci.yml",
+    "PROMPTS.md",
+  ]) {
+    if (!text.includes(expected)) {
+      fail(`docs/harness-starter/README.md: must mention "${expected}"`);
     }
   }
 }
@@ -456,10 +506,10 @@ function checkAgentsBudget() {
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
 
   if (lineCount > 100) {
-    fail(`AGENTS.md: ${lineCount} lines exceeds the 100-line budget`);
+    fail(`AGENTS.md: ${lineCount} lines exceeds the 100-line limit`);
   }
   if (wordCount > 800) {
-    fail(`AGENTS.md: ${wordCount} words exceeds the 800-word budget`);
+    fail(`AGENTS.md: ${wordCount} words exceeds the 800-word limit`);
   }
   for (const expected of [
     "CONTRIBUTING.md",
@@ -467,9 +517,11 @@ function checkAgentsBudget() {
     "DESIGN.md",
     ".agents/skills/glossary/SKILL.md",
     "docs/rule-file-guidelines.md",
+    "docs/harness-starter/README.md",
+    "PROMPTS.md",
   ]) {
     if (!text.includes(expected)) {
-      fail(`AGENTS.md: router must link "${expected}"`);
+      fail(`AGENTS.md: navigation file must link "${expected}"`);
     }
   }
 }
@@ -521,6 +573,8 @@ checkSkill();
 checkDesign();
 checkReadme();
 checkContributing();
+checkPromptLibrary();
+checkHarnessStarter();
 checkAgentsBudget();
 checkVersion();
 
