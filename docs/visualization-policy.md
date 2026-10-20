@@ -46,10 +46,29 @@ GitHub 실제 렌더링을 확인한다. 긴 라벨, 한글 폰트, 다크 모�
 - 외부 링크·악성 입력
 - 렌더러 버전 불일치
 
-## 7. 범위/후속
+## 7. 정적 gate
 
-1단계는 정책과 스킬뿐이다. 렌더러 어댑터, Mermaid 문법 검사, SVG manifest, CI 시각 게이트는 후속이다. 도구 비교 연구 전문은 이슈 #47에 있다.
+Mermaid 원본과 산출물의 기계적 일관성은 `check-diagrams.mjs`로 검사한다.
 
-## 8. 관련
+```bash
+node scripts/check-diagrams.mjs --docs docs
+node scripts/check-diagrams.mjs --docs docs --artifact-root artifacts --require-svg --json
+```
 
-관련: #46, #17, #23, #42, #26.
+- info 첫 토큰이 `mermaid`인 fenced block을 순서대로 검사한다. 열 0~3칸·목록 안·인용(`> `) 안 fence를 인식하고, 4칸 이상 들여쓰기는 코드로 보고 건너뛴다. 빈 블록은 `empty_diagram`, 모르는 형식은 `unknown_diagram_type` 오류다.
+- 지원하는 형식만 통과한다. 기본은 `flowchart`, `graph`, `sequenceDiagram`, `classDiagram`, `stateDiagram-v2`, `erDiagram`, `gantt`, `pie`, `mindmap`, `timeline`, `journey`, `quadrantChart`, `xychart-beta`, `gitGraph`다. 확장·베타는 `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment`, `requirementDiagram`, `block-beta`, `architecture-beta`, `packet-beta`, `sankey-beta`, `radar-beta`, `treemap-beta`, `kanban`, `zenuml`이다. 목록 밖 형식은 오류다.
+- 괄호 균형만 본다. 큰따옴표·백틱 안은 세지 않고, `%%` 주석은 줄 시작과 인라인을 모두 제외한다. 작은따옴표는 일반 문자다. subgraph/end pairing과 전체 문법은 보지 않는다.
+- 원본 해시는 블록 본문을 `\n`으로 잇고 마지막에 개행 하나를 붙인 바이트의 SHA-256이다.
+- 산출물 목록은 `<artifact-root>/diagram-artifacts.json`에 둔다. 형태는 `{schema_version: 1, artifacts: [{source, block, source_sha256, artifact, artifact_sha256, renderer}]}`다. `source`는 docs 루트 기준 상대 경로, `block`은 파일 안 Mermaid 순서다. 같은 키가 두 번 나오면 `duplicate_manifest_entry` 오류고 첫 항목만 검사한다.
+- 산출물 경로는 루트 기준 상대 경로만 받는다. 절대 경로는 `absolute_artifact_path` 오류다. 루트 밖 이탈·symlink 탈출은 hard error다.
+- 산출물이 없으면 `unavailable` 경고다. `--require-svg`를 주면 항목 누락·비SVG가 오류다. 요약의 `manifest_status`는 `verified`·`unavailable`·`errors` 중 하나로 JSON 소비자가 검증 여부를 구분한다.
+- SVG 안의 외부 URL·스크립트는 경고만 하고 지우지 않는다. `xmlns` 선언과 w3.org 주소는 경고하지 않는다. 경고는 엄격 모드가 생기기 전까지 gate를 실패시키지 않는다.
+- core CI는 정적 검사만 하고 렌더러·네트워크를 호출하지 않는다. GitHub 렌더링은 수동 확인이다.
+
+## 8. 범위/후속
+
+렌더러 어댑터와 CI 시각 게이트는 후속이다. 도구 비교 연구 전문은 이슈 #47에 있다.
+
+## 9. 관련
+
+관련: #61, #47, #46, #17, #23, #42, #26.
