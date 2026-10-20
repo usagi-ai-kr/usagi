@@ -49,6 +49,9 @@ jobs:
       - name: Test architecture checker
         run: node --test scripts/check-layer-deps.test.mjs
 
+      - name: Test E2E result validator
+        run: node --test scripts/validate-e2e-result.test.mjs
+
       - name: Check contract metadata
         run: node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md
 
