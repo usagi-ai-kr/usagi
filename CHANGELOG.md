@@ -17,6 +17,7 @@ All notable changes to this project are documented here. This project follows [S
 
 - Reworked the model-operations wiki page with role-fit guidance; removed the workflow/starter wiki pages and added one simple start prompt.
 - Wiki publishing now prunes retired pages and reports them in check mode.
+- Codified worker identity names, tab/agent label matching, and stable naming rules.
 
 ## [0.1.3] - 2026-10-20
 
