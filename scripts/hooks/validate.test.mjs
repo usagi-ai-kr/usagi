@@ -180,3 +180,88 @@ test("no secret values appear in stdout, stderr or evidence", () => {
   assert.ok(!lines.includes(leaked), "evidence must not leak the token");
   assert.ok(statSync(join(dir, "tmp", "hook-events.jsonl")).isFile());
 });
+
+test(".env.example placeholders and README prose pass; real values still block", () => {
+  const dir = makeRepo();
+  stage(dir, ".env.example", "API_KEY=your-key-here\n");
+  stage(dir, "README.md", "set API_KEY=... in env\n");
+  const allowed = runCommand(dir, "git commit -m docs");
+  assert.equal(allowed.status, 0);
+
+  const dir2 = makeRepo();
+  stage(dir2, ".env", "API_KEY=realvalue123\n");
+  const blockedEnv = runCommand(dir2, "git commit -m x");
+  assert.equal(blockedEnv.status, 2);
+  assert.match(blockedEnv.stderr, /secret-guard/);
+
+  const dir3 = makeRepo();
+  stage(dir3, "app.conf", "API_KEY=realvalue123\n");
+  const blockedAssign = runCommand(dir3, "git commit -m x");
+  assert.equal(blockedAssign.status, 2);
+  assert.match(blockedAssign.stderr, /secret-assignment/);
+
+  const dir4 = makeRepo();
+  const token = "ghp_realtoken000000000000000001";
+  stage(dir4, ".env.example", `BACKUP=${token}\n`);
+  const blockedToken = runCommand(dir4, "git commit -m x");
+  assert.equal(blockedToken.status, 2);
+  assert.ok(!blockedToken.stderr.includes(token));
+});
+
+test("common publish command forms are gated", () => {
+  for (const command of [
+    "git -C /tmp commit -m x",
+    "git -c user.name=x commit -m x",
+    "gh -R owner/repo pr create --title x",
+    "env FOO=1 git commit -m x",
+    "FOO=1 git commit -m x",
+  ]) {
+    const dir = makeRepo();
+    stage(dir, "ok.txt", "harmless\n");
+    const result = runCommand(dir, command);
+    assert.equal(result.status, 0, `${command} must be gated and pass`);
+    const [event] = evidenceLines(dir).slice(-1);
+    assert.equal(event.checks.secret_guard, "pass", `${command} must run the secret guard`);
+  }
+});
+
+test("command substitution stays ungated as a documented limit", () => {
+  const dir = makeRepo();
+  stage(dir, "ok.txt", "harmless\n");
+  const result = runCommand(dir, "echo $(git commit -m x)");
+  assert.equal(result.status, 0);
+  const [event] = evidenceLines(dir).slice(-1);
+  assert.deepEqual(event.checks, {});
+});
+
+test(".env.sample follows the same example rules", () => {
+  const dir = makeRepo();
+  stage(dir, ".env.sample", "API_KEY=your-key-here\n");
+  assert.equal(runCommand(dir, "git commit -m x").status, 0);
+
+  const dir2 = makeRepo();
+  const token = "ghp_sampletoken0000000000000002";
+  stage(dir2, ".env.sample", `BACKUP=${token}\n`);
+  const blocked = runCommand(dir2, "git commit -m x");
+  assert.equal(blocked.status, 2);
+  assert.ok(!blocked.stderr.includes(token));
+});
+
+test("token-like file paths are redacted from block reasons", () => {
+  const dir = makeRepo();
+  const token = "ghp_pathtoken000000000000000003";
+  stage(dir, `notes-${token}.txt`, `key = "${token}"\n`);
+  const result = runCommand(dir, "git commit -m x");
+  assert.equal(result.status, 2);
+  assert.ok(!result.stderr.includes(token), "stderr must not leak the token from the path");
+  const lines = readFileSync(join(dir, "tmp", "hook-events.jsonl"), "utf8");
+  assert.ok(!lines.includes(token), "evidence must not leak the token from the path");
+});
+
+test("lowercase secret assignments are blocked", () => {
+  const dir = makeRepo();
+  stage(dir, "app.conf", "api_key=hunter2\n");
+  const result = runCommand(dir, "git commit -m x");
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /secret-assignment/);
+});

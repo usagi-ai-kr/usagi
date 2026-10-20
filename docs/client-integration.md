@@ -68,12 +68,15 @@ CI는 정적 검증만 수행합니다. hook과 plugin의 실제 동작은 클�
 
 Claude Code `.claude/settings.json`의 `PreToolUse`가 `Bash` 명령을 가로채 이 entrypoint에 `hook_event_name`, `tool_name`, `tool_input.command`를 stdin JSON으로 넘깁니다. 테스트용으로 `--command <텍스트>`와 `--repo-root <디렉터리>`도 받습니다.
 
-- 검사 대상은 게시·영속 명령뿐입니다: `git commit`, `git push`, `gh pr create`, `gh pr merge`. 나머지는 exit 0입니다.
+- 검사 대상은 게시·영속 명령뿐입니다: `git commit`, `git push`, `gh pr create`, `gh pr merge`. 나머지는 exit 0입니다. 판정은 구문론적입니다. `git -C/-c` 값, `gh -R`, 리드인 `VAR=값`·`env`·`sudo`는 처리하지만, 명령 치환(`$(...)`) 안의 명령은 보지 않습니다. 최종 방어는 CI·브랜치 보호입니다.
 - 검사 순서: staged 변경의 secret-guard → `node scripts/validate.mjs`. `push`/PR에는 `origin/main...HEAD` 범위도 봅니다(없으면 staged만).
 - 종료 코드: `0` 허용, `2` 차단. 실패 사유는 짧은 stderr 한 줄이며 비밀값이 없습니다.
-- Secret-guard는 추가된 줄만 봅니다. staged `.env`/`.env.*`(단 `.env.example` 제외), `*.pem`, `*.key`, `id_rsa`, `id_ed25519`, `credentials`/`secrets` 파일을 막습니다. private-key 헤더, `ghp_`·`github_pat_`·`sk-`·`AKIA`·`xox[baprs]-`·`AIza`, `TOKEN|SECRET|PASSWORD|API_KEY=` 대입도 막습니다. 경로·패턴명·줄 번호만 보고합니다.
-- 증거는 `<repo-root>/tmp/hook-events.jsonl`에 호출마다 JSON 한 줄입니다: `schema_version`, `timestamp`, `event`, `decision`(`allow|block|bypass`), `reason`, 비밀값 없는 명령, `duration_ms`, 검사 결과. 증거를 못 쓰면 fail-closed로 차단합니다.
+- Secret-guard는 추가된 줄만 봅니다. staged `.env`/`.env.*`, `*.pem`, `*.key`, `id_rsa`, `id_ed25519`, `credentials`/`secrets` 파일을 막습니다. 단 `.env.example`, `*.example`, `*.sample` 경로는 예시로 보고 경로 규칙에서 뺍니다.
+- 대입 규칙(`TOKEN|SECRET|PASSWORD|API_KEY=`, 대소문자 무시)은 실제 값에만 적용됩니다. 빈 값, `your-`·`your_` 시작, `example`·`dummy`·`changeme`, `<...>` 자리표시자는 문서로 보고 통과시킵니다. `.md` 서술 안의 대입도 통과시킵니다. 토큰 패턴(`ghp_` 등)은 예시·문서를 가리지 않고 막습니다.
+- 경로·패턴명·줄 번호만 보고합니다. 파일 경로 안의 토큰형 문자열은 `[REDACTED]`로 지웁니다.
+- 증거는 `<repo-root>/tmp/hook-events.jsonl`에 호출마다 JSON 한 줄입니다: `schema_version`, `timestamp`, `event`, `decision`(`allow|block|bypass`), `reason`, 비밀값 없는 명령, `duration_ms`, 검사 결과. 파일은 append-only이며 회전하지 않습니다. 증거를 못 쓰면 fail-closed로 차단합니다. `--repo-root`는 호출자가 정하므로 신뢰 전제입니다.
 - 우회: `USAGI_HOOK_BYPASS=1`과 비어 있지 않은 `USAGI_HOOK_BYPASS_REASON`이 함께 있어야 검사를 건너뛰고 `bypass`로 기록합니다. 사유가 없으면 차단합니다.
+- 페이로드의 `hook_event_name`은 참고용이고, 실제 이벤트 구분은 CLI의 `--event`가 담당합니다.
 - 한계: 사용자 명령을 실행하지 않고 셸에 넣지 않으며 네트워크를 쓰지 않습니다. opencode/agy/Codex는 hook 확인 전까지 fallback을 씁니다. 문서·스킬·스크립트를 직접 실행합니다. 설정 파일 존재는 실행 증거가 아닙니다.
 
 ## 8. 관련

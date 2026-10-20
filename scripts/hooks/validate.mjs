@@ -42,7 +42,16 @@ const EVIDENCE_FILE = join("tmp", "hook-events.jsonl");
 
 const SECRET_PATH_PATTERN =
   /(^|\/)\.env(\..*)?$|(^|\/)[^/]*\.(pem|key)$|(^|\/)(id_rsa|id_ed25519)$|(^|\/)[^/]*(credentials|secrets)[^/]*$/i;
-const ENV_EXAMPLE = ".env.example";
+// Example files carry documentation values, not secrets. The path rule
+// exempts these basenames; content rules below still apply to real values.
+function isExamplePath(path) {
+  const base = path.split("/").pop();
+  return (
+    base === ".env.example" ||
+    base.endsWith(".example") ||
+    base.endsWith(".sample")
+  );
+}
 
 const SECRET_CONTENT_PATTERNS = [
   { name: "private-key-header", pattern: /-----BEGIN (?:RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----/ },
@@ -52,8 +61,19 @@ const SECRET_CONTENT_PATTERNS = [
   { name: "aws-key", pattern: /\bAKIA[0-9A-Z]+/ },
   { name: "slack-token", pattern: /\bxox[baprs]-[A-Za-z0-9-]+/ },
   { name: "gcp-key", pattern: /\bAIza[A-Za-z0-9_-]+/ },
-  { name: "secret-assignment", pattern: /\b(?:TOKEN|SECRET|PASSWORD|API_KEY)\s*=\S+/ },
+  { name: "secret-assignment", pattern: /\b(?:TOKEN|SECRET|PASSWORD|API_KEY)\s*=\s*(\S+)/i, redactFlags: "gi" },
 ];
+
+// Placeholder values that are documentation, not secrets. The assignment
+// rule skips these; token patterns above still fire everywhere.
+function isPlaceholderValue(raw) {
+  const value = raw.replace(/^["']|["';,]+$/g, "").trim();
+  if (value === "") return true;
+  if (/^your[-_]/i.test(value)) return true;
+  if (/^(example|dummy|changeme)(?![A-Za-z0-9])/i.test(value)) return true;
+  if (/^<[^<>]+>$/.test(value)) return true;
+  return false;
+}
 
 class UsageError extends Error {}
 
@@ -161,16 +181,52 @@ function splitWords(segment) {
 }
 
 // Only Bash commands that can publish or persist changes are gated.
+// Classification is syntactic: flags (and -C/-c/-R values), sudo/env and
+// VAR=value prefixes are skipped. Command substitution such as $(...) is
+// not unwrapped and stays ungated; CI and branch protection are the final
+// defense for those forms.
+function stripPrefixes(words) {
+  while (
+    words.length > 0 &&
+    (words[0] === "sudo" ||
+      words[0] === "env" ||
+      /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0]))
+  ) {
+    words = words.slice(1);
+  }
+  return words;
+}
+
+function skipFlagValues(words, valuedFlags) {
+  const rest = [];
+  let skipNext = false;
+  for (const word of words) {
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
+    if (valuedFlags.includes(word)) {
+      skipNext = true;
+      continue;
+    }
+    if (word.startsWith("-")) continue;
+    rest.push(word);
+  }
+  return rest;
+}
+
 function gatedKind(command) {
   for (const segment of splitSegments(command)) {
-    let words = splitWords(segment.trim());
-    while (words[0] === "sudo" || words[0] === "env") words = words.slice(1);
+    const words = stripPrefixes(splitWords(segment.trim()));
     if (words[0] === "git") {
-      const sub = words.find((word, index) => index > 0 && !word.startsWith("-"));
+      const sub = skipFlagValues(words.slice(1), ["-C", "-c"])[0];
       if (sub === "commit" || sub === "push") return `git ${sub}`;
     }
-    if (words[0] === "gh" && words[1] === "pr" && (words[2] === "create" || words[2] === "merge")) {
-      return `gh pr ${words[2]}`;
+    if (words[0] === "gh") {
+      const rest = skipFlagValues(words.slice(1), ["-R", "--repo"]);
+      if (rest[0] === "pr" && (rest[1] === "create" || rest[1] === "merge")) {
+        return `gh pr ${rest[1]}`;
+      }
     }
   }
   return null;
@@ -208,8 +264,7 @@ function checkSecrets(repoRoot, kind) {
       path = line.slice(4).trim().replace(/^b\//, "");
       newLine = 0;
       if (
-        path !== ENV_EXAMPLE &&
-        !path.endsWith(`/${ENV_EXAMPLE}`) &&
+        !isExamplePath(path) &&
         SECRET_PATH_PATTERN.test(path)
       ) {
         return { path, pattern: "blocked-path", line: null };
@@ -223,10 +278,15 @@ function checkSecrets(repoRoot, kind) {
     }
     if (!line.startsWith("+") || line.startsWith("+++")) continue;
     const added = line.slice(1);
+    // Prose files describe variables instead of holding values: the
+    // assignment rule is skipped there, but token patterns still fire.
+    const prose = path !== null && path.endsWith(".md");
     for (const { name, pattern } of SECRET_CONTENT_PATTERNS) {
-      if (pattern.test(added)) {
-        return { path, pattern: name, line: newLine || null };
-      }
+      if (name === "secret-assignment" && prose) continue;
+      const match = pattern.exec(added);
+      if (match === null) continue;
+      if (name === "secret-assignment" && isPlaceholderValue(match[1])) continue;
+      return { path, pattern: name, line: newLine || null };
     }
     newLine += 1;
   }
@@ -250,8 +310,17 @@ function runRepoValidate(repoRoot) {
 
 function redactCommand(command) {
   let result = command;
+  for (const entry of SECRET_CONTENT_PATTERNS) {
+    result = result.replace(new RegExp(entry.pattern.source, entry.redactFlags ?? "g"), "[REDACTED]");
+  }
+  return result;
+}
+
+function redactPath(path) {
+  if (path === null || path === undefined) return path;
+  let result = String(path);
   for (const { pattern } of SECRET_CONTENT_PATTERNS) {
-    result = result.replace(new RegExp(pattern.source, "g"), "[REDACTED]");
+    result = result.replace(new RegExp(pattern.source, "gi"), "[REDACTED]");
   }
   return result;
 }
@@ -375,7 +444,7 @@ function main(argv) {
     return block(
       repoRoot,
       finish({ ...base, command: redacted, checks: { secret_guard: "fail", validate: "skip" } }),
-      `secret-guard blocked ${where} (${secret.pattern})`,
+      `secret-guard blocked ${redactPath(where)} (${secret.pattern})`,
     );
   }
 
