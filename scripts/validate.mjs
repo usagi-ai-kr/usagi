@@ -6,12 +6,15 @@
  */
 import {
   existsSync,
+  lstatSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   statSync,
 } from "node:fs";
 import { dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadGlossary, renderIndex } from "./lib/glossary.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -35,13 +38,19 @@ function existingFile(relPath) {
 
 const requiredFiles = [
   "README.md",
+  "AGENTS.md",
+  "CLAUDE.md",
   "CONTRIBUTING.md",
   "docs/glossary.md",
+  "docs/glossary/categories.json",
   "docs/wiki/Home.md",
   "docs/wiki/_Sidebar.md",
+  ".agents/skills/glossary/SKILL.md",
   ".github/labels.json",
   ".github/branch-protection.json",
   ".github/workflows/ci.yml",
+  "scripts/build-glossary-index.mjs",
+  "scripts/lib/glossary.mjs",
   "scripts/sync-labels.sh",
   "scripts/sync-wiki.sh",
   "scripts/apply-repo-policy.sh",
@@ -50,6 +59,7 @@ const requiredFiles = [
 for (const path of requiredFiles) existingFile(path);
 
 for (const path of [
+  "scripts/build-glossary-index.mjs",
   "scripts/sync-labels.sh",
   "scripts/sync-wiki.sh",
   "scripts/apply-repo-policy.sh",
@@ -57,6 +67,16 @@ for (const path of [
   if (!existsSync(join(root, path))) continue;
   const mode = statSync(join(root, path)).mode;
   if ((mode & 0o111) === 0) fail(`script is not executable: ${path}`);
+}
+
+const claudePath = join(root, "CLAUDE.md");
+if (existsSync(claudePath)) {
+  const claudeStat = lstatSync(claudePath);
+  if (!claudeStat.isSymbolicLink()) {
+    fail("CLAUDE.md must be a symlink to AGENTS.md");
+  } else if (readlinkSync(claudePath) !== "AGENTS.md") {
+    fail(`CLAUDE.md must point to AGENTS.md, got ${readlinkSync(claudePath)}`);
+  }
 }
 
 function walkMarkdown(dir, output = []) {
@@ -113,98 +133,26 @@ for (const file of markdownFiles) {
   }
 }
 
-function normalizeTerm(raw) {
-  return raw
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 function checkGlossary() {
+  const glossary = loadGlossary(root);
+  for (const error of glossary.errors) fail(error);
+
+  if (glossary.errors.length > 0) return glossary.terms.length;
+
   const path = join(root, "docs/glossary.md");
-  if (!existsSync(path)) return;
-
-  const allowedCategories = new Set([
-    "오케스트레이션",
-    "신뢰성",
-    "Git·CI",
-    "테스트·품질",
-    "문서·운영",
-  ]);
-  const lines = read(path).split(/\r?\n/);
-  const rows = [];
-  let inTable = false;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith("|")) {
-      if (rows.length > 0) break;
-      continue;
-    }
-    if (!inTable) {
-      if (
-        trimmed.includes("용어") &&
-        trimmed.includes("분류") &&
-        trimmed.includes("뜻")
-      ) {
-        inTable = true;
-      }
-      continue;
-    }
-    if (/^\|\s*:?-{3,}/.test(trimmed)) continue;
-
-    const cells = trimmed
-      .slice(1, -1)
-      .split("|")
-      .map((cell) => cell.trim());
-
-    if (cells.length !== 4) {
-      fail(`docs/glossary.md: expected 4 columns, got ${cells.length}: ${trimmed}`);
-      continue;
-    }
-
-    const [termCell, category, definition, reference] = cells;
-    const termMatch = termCell.match(/^\*\*(.+?)\*\*(?:\s*\(([^)]*)\))?$/);
-    if (!termMatch) {
-      fail(`docs/glossary.md: term must be bold: ${termCell}`);
-      continue;
-    }
-
-    const english = termMatch[1].trim();
-    const korean = termMatch[2]?.trim() ?? "";
-    const key = normalizeTerm(english);
-
-    if (key === "") fail(`docs/glossary.md: empty term: ${termCell}`);
-    if (!allowedCategories.has(category)) {
-      fail(`docs/glossary.md: unknown category "${category}" for ${english}`);
-    }
-    if (definition === "") fail(`docs/glossary.md: empty definition for ${english}`);
-    if (reference === "") fail(`docs/glossary.md: empty reference for ${english}`);
-
-    rows.push({ key, english, korean });
+  if (!existsSync(path)) {
+    fail("docs/glossary.md: missing generated index");
+    return glossary.terms.length;
   }
 
-  if (rows.length < 30) {
-    fail(`docs/glossary.md: expected at least 30 terms, got ${rows.length}`);
+  const expected = renderIndex(glossary);
+  if (read(path) !== expected) {
+    fail(
+      "docs/glossary.md: index is out of date; run node scripts/build-glossary-index.mjs",
+    );
   }
 
-  const seen = new Map();
-  for (const row of rows) {
-    if (seen.has(row.key)) {
-      fail(`docs/glossary.md: duplicate term: ${row.english} (${seen.get(row.key)})`);
-    }
-    seen.set(row.key, row.english);
-  }
-
-  for (let index = 1; index < rows.length; index += 1) {
-    if (rows[index - 1].key >= rows[index].key) {
-      fail(
-        `docs/glossary.md: not alphabetical: "${rows[index - 1].english}" must come after "${rows[index].english}"`,
-      );
-    }
-  }
-
-  return rows.length;
+  return glossary.terms.length;
 }
 
 function checkLabels() {
@@ -358,10 +306,27 @@ function checkWorkflow() {
   }
 }
 
+function checkSkill() {
+  const path = join(root, ".agents/skills/glossary/SKILL.md");
+  if (!existsSync(path)) return;
+  const text = read(path);
+
+  if (!text.startsWith("---\n")) {
+    fail(".agents/skills/glossary/SKILL.md: missing frontmatter");
+  }
+  if (!text.includes("\nname: glossary\n")) {
+    fail(".agents/skills/glossary/SKILL.md: missing name: glossary");
+  }
+  if (!text.includes("\ndescription: ")) {
+    fail(".agents/skills/glossary/SKILL.md: missing description");
+  }
+}
+
 const glossaryCount = checkGlossary();
 const labelCount = checkLabels();
 checkBranchProtection();
 checkWorkflow();
+checkSkill();
 
 if (errors.length > 0) {
   console.error(`✗ ${errors.length} validation error(s):`);
