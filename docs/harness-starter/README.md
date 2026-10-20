@@ -4,7 +4,7 @@
 
 ## 5분 경로
 
-1. [하네스 엔지니어링이란?](https://github.com/usagi-ai-kr/usagi/wiki/What-is-Harness-Engineering)와 [운영 플로우](https://github.com/usagi-ai-kr/usagi/wiki/Workflows)를 읽습니다.
+1. [하네스 엔지니어링이란?](https://github.com/usagi-ai-kr/usagi/wiki/What-is-Harness-Engineering)와 [개념](https://github.com/usagi-ai-kr/usagi/wiki/Concepts)을 읽습니다.
 2. [`templates/AGENTS.md`](templates/AGENTS.md)를 대상 저장소 루트에 복사하고 빈칸을 채웁니다.
 3. [`templates/CONTRIBUTING.md`](templates/CONTRIBUTING.md)를 복사해 에이전트 기여 체크리스트를 만듭니다.
 4. [`templates/labels.json`](templates/labels.json)과 [`templates/branch-protection.json`](templates/branch-protection.json)을 `.github/`에 맞게 적용합니다.

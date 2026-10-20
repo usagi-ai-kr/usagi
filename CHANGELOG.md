@@ -13,6 +13,11 @@ All notable changes to this project are documented here. This project follows [S
 - Human-readable wiki concept page covering skills, rule files, DESIGN.md, TDD and layers.
 - Design reference catalog, design decision template, and design-review skill for token-grounded visual work.
 
+### Changed
+
+- Reworked the model-operations wiki page with role-fit guidance; removed the workflow/starter wiki pages and added one simple start prompt.
+- Wiki publishing now prunes retired pages and reports them in check mode.
+
 ## [0.1.3] - 2026-10-20
 
 ### Added

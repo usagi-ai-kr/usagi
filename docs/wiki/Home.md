@@ -1,28 +1,21 @@
 # usagi wiki
 
-에이전트를 안정적으로 운용하기 위한 개념과 흐름을 사람이 읽기 쉽게 정리합니다.
+에이전트를 안정적으로 운용하기 위한 개념과 관찰을 사람이 읽기 쉽게 정리합니다.
 
-## 개념
+## 시작
+
+이 저장소의 AGENTS.md와 CONTRIBUTING.md를 읽고, 내 저장소에 필요한 최소 하네스만 제안해줘. 파일을 만들기 전에 계획을 보여줘.
+
+## 읽을거리
 
 - [하네스 엔지니어링이란?](What-is-Harness-Engineering)
 - [개념: 스킬·규칙·설계·테스트·레이어](Concepts)
-- [운영 플로우](Workflows)
-- [하네스 시작하기](Harness-Starter)
 - [모델별 운용 기록](Model-Operations)
-
-## 용어집
-
-- [Glossary Index (전체 용어)](Glossary)
-- [Orchestration (오케스트레이션)](Glossary-Orchestration)
-- [Reliability (신뢰성)](Glossary-Reliability)
-- [Git & CI](Glossary-Git-CI)
-- [Testing & Quality (테스트·품질)](Glossary-Testing-Quality)
-- [Documentation & Operations (문서·운영)](Glossary-Docs-Operations)
+- [Glossary](Glossary)
 
 ## 저장소
 
 - [README](https://github.com/usagi-ai-kr/usagi#readme)
-- [참고 문서](https://github.com/usagi-ai-kr/usagi/blob/main/PROMPTS.md)
 - [Changelog](https://github.com/usagi-ai-kr/usagi/blob/main/CHANGELOG.md)
 - [Issues](https://github.com/usagi-ai-kr/usagi/issues)
 - [Pull requests](https://github.com/usagi-ai-kr/usagi/pulls)
