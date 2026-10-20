@@ -47,4 +47,4 @@ node scripts/validate.mjs
 
 ## 6. 사람이 읽는 순서
 
-[Home](Home) → [하네스 엔지니어링이란?](What-is-Harness-Engineering) → [운영 플로우](Workflows) → [Glossary](Glossary)
+[Home](Home) → [하네스 엔지니어링이란?](What-is-Harness-Engineering) → [운영 플로우](Workflows) → [Glossary](Glossary) → [모델별 운용 기록](Model-Operations)
