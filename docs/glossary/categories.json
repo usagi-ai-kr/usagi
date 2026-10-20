@@ -1,0 +1,44 @@
+{
+  "categories": [
+    {
+      "id": "orchestration",
+      "file": "orchestration.md",
+      "title": "Orchestration",
+      "korean": "오케스트레이션",
+      "wiki": "Glossary-Orchestration",
+      "description": "에이전트 역할, 작업 분배, 콜백, 소유권, 리뷰 체인처럼 누가 무엇을 하는가에 관한 용어."
+    },
+    {
+      "id": "reliability",
+      "file": "reliability.md",
+      "title": "Reliability",
+      "korean": "신뢰성",
+      "wiki": "Glossary-Reliability",
+      "description": "원장, 아웃박스, 멱등성, 재조정처럼 중단·중복·유실에도 상태를 지키는 용어."
+    },
+    {
+      "id": "git-ci",
+      "file": "git-ci.md",
+      "title": "Git & CI",
+      "korean": "Git·CI",
+      "wiki": "Glossary-Git-CI",
+      "description": "브랜치, SHA, 병합, CI, 브랜치 보호처럼 변경을 전달하는 경로의 용어."
+    },
+    {
+      "id": "testing-quality",
+      "file": "testing-quality.md",
+      "title": "Testing & Quality",
+      "korean": "테스트·품질",
+      "wiki": "Glossary-Testing-Quality",
+      "description": "Red→Green, 회귀, 플레이크, BDD, Lighthouse처럼 품질을 확인하는 용어."
+    },
+    {
+      "id": "operations",
+      "file": "operations.md",
+      "title": "Documentation & Operations",
+      "korean": "문서·운영",
+      "wiki": "Glossary-Docs-Operations",
+      "description": "용어집, 레이블, ADR, runbook, 위키처럼 문서와 운영을 지탱하는 용어."
+    }
+  ]
+}

@@ -1,29 +1,14 @@
 # usagi
 
-Unsupervised Space for Agent Guidelines & Infrastructure.
-
-[![CI](https://github.com/usagi-ai-kr/usagi/actions/workflows/ci.yml/badge.svg)](https://github.com/usagi-ai-kr/usagi/actions/workflows/ci.yml)
-
-## Start here
-
-- [Glossary (용어집)](docs/glossary.md) — Issue #1 / PR #2에 나오는 낯선 용어를 찾는 사전. 위키에도 게시됩니다.
-- [Contributing](CONTRIBUTING.md) — 레이블, 브랜치 보호, CI, 위키 동기화 규칙.
-- [Issue #1 — Herdr 멀티 에이전트 하네스](https://github.com/usagi-ai-kr/usagi/issues/1)
-- [PR #2 — Multi-agent orchestration contract](https://github.com/usagi-ai-kr/usagi/pull/2)
-
-## Repository layout
-
 ```text
-docs/
-  glossary.md                 # 용어집 원본
-  wiki/                       # 위키에 게시할 Home / Sidebar 원본
-.github/
-  labels.json                 # MECE 레이블 정의 (as code)
-  branch-protection.json      # main 브랜치 보호 설정
-  workflows/ci.yml            # 문서·용어집·레이블 검증
-scripts/
-  validate.mjs                # 링크·용어집·레이블 검사
-  sync-labels.sh              # labels.json -> GitHub labels
-  sync-wiki.sh                # docs -> GitHub wiki
-  apply-repo-policy.sh        # 병합 설정 + main 브랜치 보호 적용
+https://github.com/usagi-ai-kr/usagi
+
+이 저장소는 에이전트 운영 경험과 공통 규약을 모으는 공간이다.
+저장소가 로컬에 있으면 그 경로를, 없으면 위 GitHub 링크의 README.md, AGENTS.md, docs/glossary.md를 읽어라.
+
+앞으로 내가 쓰는 낯선 용어는 docs/glossary/<category>.md의 정의와 출처를 근거로 쉬운 말로 설명해라.
+용어집에 없는 용어는 docs/glossary/categories.json에서 카테고리를 고르고, 기존 형식으로 항목 초안과 참고 출처를 제안해라.
+문서를 바꾸기 전에 계획을 보여주고, 승인 후 node scripts/build-glossary-index.mjs와 node scripts/validate.mjs를 실행해라.
+Wiki는 사람이 읽는 문서이므로 운영 규칙을 추가하지 말고, 게시가 필요하면 ./scripts/sync-wiki.sh를 사용해라.
+Wiki의 개념·플로우는 https://github.com/usagi-ai-kr/usagi/wiki 에서 읽어라.
 ```
