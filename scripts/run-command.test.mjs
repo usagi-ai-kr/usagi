@@ -39,6 +39,7 @@ const ENVELOPE_FIELDS = [
   "command",
   "cwd",
   "env_fingerprint",
+  "env_passed",
   "started_at",
   "duration_ms",
   "exit_code",
@@ -286,7 +287,7 @@ test("output files exist and sizes match non-empty output", () => {
 test("--help exits 0 and documents the flags", () => {
   const result = run(["--help"]);
   assert.equal(result.status, 0);
-  for (const flag of ["--argv-json", "--out-dir", "--cwd", "--timeout-ms", "--max-output-bytes", "--redact", "--json"]) {
+  for (const flag of ["--argv-json", "--arg", "--env", "--out-dir", "--cwd", "--timeout-ms", "--max-output-bytes", "--redact", "--stdout-path", "--stderr-path", "--report-path", "--json"]) {
     assert.ok(result.stdout.includes(flag), `help must document ${flag}`);
   }
 });
@@ -511,4 +512,168 @@ test("timeout kills the grandchild process too", () => {
     sleepMs(50);
   }
   assert.ok(dead, `grandchild pid ${grandchildPid} must not survive the timeout`);
+});
+
+test("child does not inherit unlisted parent variables", () => {
+  const outDir = makeOutDir();
+  const marker = "ISSUE70_UNLISTED_MARKER";
+  const result = run(
+    [
+      "--argv-json",
+      argvOf(process.execPath, "-e", `console.log(process.env.${marker} ?? "ABSENT")`),
+      "--out-dir",
+      outDir,
+      "--json",
+    ],
+    { env: { ...process.env, [marker]: "should-not-leak" } },
+  );
+  assert.equal(result.status, 0);
+  const envelope = JSON.parse(result.stdout);
+  assert.match(readFileSync(envelope.stdout_ref, "utf8"), /ABSENT/);
+});
+
+test("--env passes the named variable and records only its name", () => {
+  const outDir = makeOutDir();
+  const name = "ISSUE70_PASS_ME";
+  const value = "issue70-present-value";
+  const result = run(
+    [
+      "--argv-json",
+      argvOf(process.execPath, "-e", `console.log(process.env.${name} ?? "ABSENT")`),
+      "--out-dir",
+      outDir,
+      "--env",
+      name,
+      "--json",
+    ],
+    { env: { ...process.env, [name]: value } },
+  );
+  assert.equal(result.status, 0);
+  const envelope = JSON.parse(result.stdout);
+  assert.match(readFileSync(envelope.stdout_ref, "utf8"), new RegExp(value));
+  assert.ok(envelope.env_passed.includes(name));
+  assert.ok(!JSON.stringify(envelope).includes(value), "env value must not appear in the envelope");
+});
+
+test("--env for a missing name leaves it absent without inventing a value", () => {
+  const outDir = makeOutDir();
+  const name = "ISSUE70_DEFINITELY_MISSING_VAR";
+  const env = { ...process.env };
+  delete env[name];
+  const result = run(
+    [
+      "--argv-json",
+      argvOf(process.execPath, "-e", `console.log(process.env.${name} ?? "ABSENT")`),
+      "--out-dir",
+      outDir,
+      "--env",
+      name,
+      "--json",
+    ],
+    { env },
+  );
+  assert.equal(result.status, 0);
+  const envelope = JSON.parse(result.stdout);
+  assert.match(readFileSync(envelope.stdout_ref, "utf8"), /ABSENT/);
+  assert.ok(envelope.env_passed.includes(name));
+});
+
+test("secret-looking values stay redacted under the allowlist", () => {
+  const outDir = makeOutDir();
+  const secret = "issue70-allowlist-secret";
+  const result = run(
+    [
+      "--argv-json",
+      argvOf(process.execPath, "-e", `console.log("${secret}");console.error("done")`),
+      "--out-dir",
+      outDir,
+      "--json",
+    ],
+    { env: { ...process.env, ISSUE70_TOKEN: secret } },
+  );
+  assert.equal(result.status, 0);
+  const envelope = JSON.parse(result.stdout);
+  assert.ok(!JSON.stringify(envelope).includes(secret), "no raw secret anywhere in the envelope");
+  assert.ok(!readFileSync(envelope.stdout_ref, "utf8").includes(secret));
+  assert.ok(!result.stdout.includes(secret));
+});
+
+test("repeated --arg values arrive in order", () => {
+  const outDir = makeOutDir();
+  const result = run([
+    "--arg",
+    process.execPath,
+    "--arg",
+    "-e",
+    "--arg",
+    "console.log('first');console.log('second')",
+    "--out-dir",
+    outDir,
+    "--json",
+  ]);
+  assert.equal(result.status, 0);
+  const envelope = JSON.parse(result.stdout);
+  const text = readFileSync(envelope.stdout_ref, "utf8");
+  assert.ok(text.indexOf("first") !== -1 && text.indexOf("first") < text.indexOf("second"));
+});
+
+test("--argv-json stays compatible; mixing modes and empty --arg exit 2", () => {
+  const outDir = makeOutDir();
+  const compat = run([
+    "--argv-json",
+    argvOf(process.execPath, "-e", "console.log('compat-ok')"),
+    "--out-dir",
+    outDir,
+    "--json",
+  ]);
+  assert.equal(compat.status, 0);
+  assert.match(readFileSync(JSON.parse(compat.stdout).stdout_ref, "utf8"), /compat-ok/);
+
+  assert.equal(
+    run([
+      "--argv-json",
+      argvOf(process.execPath, "-e", "1"),
+      "--arg",
+      "extra",
+      "--out-dir",
+      outDir,
+    ]).status,
+    2,
+  );
+  assert.equal(
+    run(["--arg", process.execPath, "--arg", "", "--out-dir", outDir]).status,
+    2,
+  );
+  assert.equal(
+    run(["--env", "BAD NAME", "--out-dir", outDir]).status,
+    2,
+  );
+});
+
+test("explicit report/stdout/stderr paths do not collide with the JSON report", () => {
+  const outDir = makeOutDir();
+  const stdoutPath = join(outDir, "custom", "child.out.log");
+  const stderrPath = join(outDir, "custom", "child.err.log");
+  const reportPath = join(outDir, "custom", "report.json");
+  const result = run([
+    "--argv-json",
+    argvOf(process.execPath, "-e", "console.log('body');console.error('err-body')"),
+    "--out-dir",
+    outDir,
+    "--stdout-path",
+    stdoutPath,
+    "--stderr-path",
+    stderrPath,
+    "--report-path",
+    reportPath,
+    "--json",
+  ]);
+  assert.equal(result.status, 0);
+  assert.ok(!result.stdout.includes('"schema_version"'), "JSON report must not appear on stdout");
+  const envelope = JSON.parse(readFileSync(reportPath, "utf8"));
+  assert.equal(envelope.exit_code, 0);
+  assert.equal(envelope.stdout_ref, stdoutPath);
+  assert.equal(envelope.stderr_ref, stderrPath);
+  assert.match(readFileSync(stdoutPath, "utf8"), /body/);
+  assert.match(readFileSync(stderrPath, "utf8"), /err-body/);
 });
