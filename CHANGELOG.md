@@ -4,6 +4,8 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-21
+
 ### Added
 
 - E2E reference runner with an owned fixture server, optional Playwright adapter, fail-closed cleanup and validator-checked evidence.
@@ -23,7 +25,7 @@ All notable changes to this project are documented here. This project follows [S
 
 - PR bodies close completed issues with `Closes #N` and keep a `Related issue` section even when there is none.
 - Skill descriptions now include `Use when ...` triggers for client auto-invocation, enforced by validation.
-- Updated the README version summary and toolchain example for v0.2.0.
+- Updated the README version summary and toolchain example.
 
 ## [0.2.0] - 2026-10-20
 
