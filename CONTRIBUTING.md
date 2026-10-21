@@ -56,6 +56,7 @@ node --test scripts/run-command.test.mjs
 node --test scripts/check-requirement-trace.test.mjs
 node --test scripts/check-diagrams.test.mjs
 node --test scripts/run-test-gates.test.mjs
+node --test scripts/e2e-runner.test.mjs
 node scripts/run-test-gates.mjs --config test/fixtures/test-gates/config.json --only unit --json --evidence-dir tmp/test-gates
 node --test scripts/hooks/validate.test.mjs
 node scripts/check-human-doc.mjs --require-metadata docs/human-writing-contract.md

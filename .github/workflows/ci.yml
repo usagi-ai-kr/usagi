@@ -64,6 +64,9 @@ jobs:
       - name: Test test-gate runner
         run: node --test scripts/run-test-gates.test.mjs
 
+      - name: Test E2E reference runner (browser-free)
+        run: node --test scripts/e2e-runner.test.mjs
+
       - name: Run fixture unit gate
         run: node scripts/run-test-gates.mjs --config test/fixtures/test-gates/config.json --only unit --json --evidence-dir tmp/test-gates
 

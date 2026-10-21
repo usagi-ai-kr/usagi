@@ -31,6 +31,7 @@ pnpm·uv·sh를 usagi 전체 공통 필수 의존성으로 강제하지 않는�
 | jq | `sync-wiki.sh`, `sync-labels.sh`, `apply-repo-policy.sh`에서 JSON 파싱 | Optional | 없으면 해당 스크립트만 실행 불가 |
 | gh | `sync-labels.sh`, `apply-repo-policy.sh`에서 GitHub API 호출 | Optional | 인증·네트워크 필요. 없으면 해당 스크립트만 실행 불가 |
 | npx | CI-only 도구(`skills-ref`, `design.md` linter) 내려받기 | CI-only | `--yes`로 핀 버전 고정. 로컬 실행 시 네트워크 다운로드 발생 |
+| playwright + Chromium | E2E reference runner의 선택 브라우저 어댑터 | Optional | 없으면 브라우저 실행 불가로 보고. 자동 설치·다운로드 금지. 미검증. 고정 버전은 `tools/e2e-reference/package.json` 선언(`playwright`·`playwright-core` 동일 버전)을 따른다(로컬 수동 설치 전용, CI 설치 없음) |
 
 패키지 매니저 lockfile 없음. `npx --yes` 다운로드는 CI-only 도구에 한정되며, 그 외 패키지 설치는 `Prohibited implicit`이다.
 
