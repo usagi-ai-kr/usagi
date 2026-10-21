@@ -65,12 +65,6 @@ const requiredFiles = [
   "tools/e2e-reference/package.json",
   "docs/architecture-map.example.json",
   "docs/rule-file-guidelines.md",
-  "docs/harness-starter/README.md",
-  "docs/harness-starter/templates/AGENTS.md",
-  "docs/harness-starter/templates/CONTRIBUTING.md",
-  "docs/harness-starter/templates/ci.yml",
-  "docs/harness-starter/templates/labels.json",
-  "docs/harness-starter/templates/branch-protection.json",
   "docs/wiki/Home.md",
   "docs/wiki/_Sidebar.md",
   "docs/wiki/What-is-Harness-Engineering.md",
@@ -187,9 +181,6 @@ const linkPattern = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 
 for (const file of markdownFiles) {
   const rel = relative(root, file);
-  // Template files intentionally contain unresolved placeholder links.
-  if (rel.startsWith("docs/harness-starter/templates/")) continue;
-
   const text = read(file)
     .replace(/```[\s\S]*?```/g, "")
     .replace(/`[^`\n]*`/g, "");
@@ -523,7 +514,6 @@ function checkReadme() {
   for (const expected of [
     "https://github.com/usagi-ai-kr/usagi/wiki",
     "docs/glossary.md",
-    "docs/harness-starter/README.md",
     "PROMPTS.md",
     "CHANGELOG.md",
   ]) {
@@ -531,8 +521,17 @@ function checkReadme() {
       fail(`README.md: reader entry point must mention "${expected}"`);
     }
   }
-  if (text.includes("```text")) {
-    fail("README.md: keep copy-paste prompts in CONTRIBUTING.md");
+
+  const promptBlocks = [...text.matchAll(/```(?:text)?\r?\n([\s\S]*?)\r?\n```/g)];
+  if (promptBlocks.length !== 1) {
+    fail(`README.md: keep exactly one start prompt block, found ${promptBlocks.length}`);
+  } else {
+    const prompt = promptBlocks[0][1].trim();
+    if (prompt.length === 0) {
+      fail("README.md: start prompt is empty");
+    } else if (prompt.length > 128) {
+      fail(`README.md: start prompt must be <=128 characters, got ${prompt.length}`);
+    }
   }
 }
 
@@ -588,7 +587,7 @@ function checkPromptLibrary() {
   }
   for (const expected of [
     "https://github.com/usagi-ai-kr/usagi",
-    "docs/harness-starter/README.md",
+    "README.md",
     "AGENTS.md",
     "CONTRIBUTING.md",
     "docs/glossary.md",
@@ -599,25 +598,6 @@ function checkPromptLibrary() {
   ]) {
     if (!text.includes(expected)) {
       fail(`PROMPTS.md: must mention "${expected}"`);
-    }
-  }
-}
-
-function checkHarnessStarter() {
-  const path = join(root, "docs/harness-starter/README.md");
-  if (!existsSync(path)) return;
-  const text = read(path);
-
-  for (const expected of [
-    "templates/AGENTS.md",
-    "templates/CONTRIBUTING.md",
-    "templates/labels.json",
-    "templates/branch-protection.json",
-    "templates/ci.yml",
-    "PROMPTS.md",
-  ]) {
-    if (!text.includes(expected)) {
-      fail(`docs/harness-starter/README.md: must mention "${expected}"`);
     }
   }
 }
@@ -643,7 +623,6 @@ function checkAgentsBudget() {
     "docs/human-writing-contract.md",
     ".agents/skills/human-doc/SKILL.md",
     "docs/rule-file-guidelines.md",
-    "docs/harness-starter/README.md",
     "PROMPTS.md",
   ]) {
     if (!text.includes(expected)) {
@@ -760,7 +739,6 @@ checkReadme();
 checkContributing();
 checkSectionNumbers();
 checkPromptLibrary();
-checkHarnessStarter();
 checkClientConfigs();
 checkAgentsBudget();
 checkVersion();

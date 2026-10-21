@@ -4,6 +4,10 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Removed
+
+- Removed the Harness starter guide and templates; README now carries one short start prompt.
+
 ## [0.3.0] - 2026-10-21
 
 ### Added
