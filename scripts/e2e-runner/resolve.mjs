@@ -9,7 +9,7 @@
  * ever installed here.
  */
 import { createRequire } from "node:module";
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -52,7 +52,13 @@ function tryBase(baseDir, packageName) {
     } catch {
       version = "unknown";
     }
-    return { entry, version };
+    let packageDir = dirname(packageJsonPath);
+    try {
+      packageDir = realpathSync(packageDir);
+    } catch {
+      // Keep the unresolved directory; resolution already succeeded.
+    }
+    return { entry, version, packageDir };
   } catch {
     return null;
   }
@@ -65,15 +71,23 @@ function majorOf(version) {
 
 /**
  * Locate the driver. Returns
- * { available: true, name, version, entry, baseDir } or
- * { available: false, reason }.
+ * { available: true, name, version, entry, package_dir, search_base } or
+ * { available: false, reason }. package_dir is the actual resolved package
+ * directory; search_base is only where resolution started.
  */
 export function detectDriver(extraBases = []) {
   for (const base of runtimeBases(extraBases)) {
     for (const name of DRIVER_PACKAGES) {
       const hit = tryBase(base, name);
       if (hit !== null) {
-        return { available: true, name, version: hit.version, entry: hit.entry, baseDir: base };
+        return {
+          available: true,
+          name,
+          version: hit.version,
+          entry: hit.entry,
+          package_dir: hit.packageDir,
+          search_base: base,
+        };
       }
     }
   }

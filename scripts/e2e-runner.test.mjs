@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import net from "node:net";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
 import { tmpdir, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -372,21 +372,90 @@ test("browser behavior runs when a usable browser is resolved", async (t) => {
   assert.equal(result.result.status, "passed");
 });
 
-test("explicit playwright request fails closed when no driver resolves", () => {
+test("non-chromium --browser is rejected before starting", () => {
+  const outDir = makeTemp("e2e-browserflag-");
+  const result = runRunner(["--out-dir", outDir, "--browser", "firefox"]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /chromium/);
+});
+
+test("explicit playwright request fails closed when no driver resolves", async (t) => {
   const emptyBase = makeTemp("e2e-nodriver-");
+  // The production resolver also searches tools/ and the repo root: only
+  // assert absence when it genuinely finds nothing.
+  const { detectDriver: detect } = await import("./e2e-runner/resolve.mjs");
+  if (detect([emptyBase]).available) {
+    t.skip("a driver resolves in this environment; absence unprovable here");
+    return;
+  }
   const outDir = makeTemp("e2e-explicitabsent-");
   const result = runWithBases(["--out-dir", outDir, "--adapter", "playwright"], [emptyBase]);
   assert.equal(result.status, 2);
   assert.match(result.stderr, /playwright/i);
 });
 
-function makeFakeDriver({ version, executable }) {
-  const base = makeTemp("e2e-fakedriver-");
-  const pkgDir = join(base, "node_modules", "playwright");
+test("explicit playwright request pins the version deterministically", () => {
+  const base = makeFakeDriver({ version: "2.0.0" });
+  const outDir = makeTemp("e2e-explicitpin-");
+  const result = runWithBases(["--out-dir", outDir, "--adapter", "playwright"], [base]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /pinned|major/i);
+});
+
+test("non-chromium --browser is rejected before starting", () => {
+  const outDir = makeTemp("e2e-browserflag-");
+  const result = runRunner(["--out-dir", outDir, "--browser", "firefox"]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /chromium/);
+});
+
+test("package_dir records the resolved package, not the search base", () => {
+  const base = makeTemp("e2e-pkgdir-");
+  const target = join(base, "real");
+  const pkgDir = join(target, "node_modules", "playwright-core");
   mkdirSync(pkgDir, { recursive: true });
   writeFileSync(
     join(pkgDir, "package.json"),
-    JSON.stringify({ name: "playwright", version, main: "index.js" }),
+    JSON.stringify({ name: "playwright-core", version: "1.64.1", main: "index.js" }),
+  );
+  writeFileSync(join(pkgDir, "index.js"), "module.exports = {};\n");
+  const emptyBase = makeTemp("e2e-pkgdir-empty-");
+  // NODE_PATH is read once at process startup, so detection runs in a child
+  // process whose environment carries it — the same mechanism production uses.
+  const probe = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", `
+      import { detectDriver } from ${JSON.stringify(new URL("./e2e-runner/resolve.mjs", import.meta.url).href)};
+      console.log(JSON.stringify(detectDriver([${JSON.stringify(emptyBase)}])));
+    `],
+    {
+      encoding: "utf8",
+      env: { ...process.env, NODE_PATH: join(target, "node_modules") },
+    },
+  );
+  assert.equal(probe.status, 0);
+  const detected = JSON.parse(probe.stdout);
+  assert.equal(detected.available, true);
+  assert.equal(detected.name, "playwright-core");
+  assert.equal(detected.package_dir, realpathSync(pkgDir));
+  assert.notEqual(detected.package_dir, emptyBase);
+});
+
+test("playwright-core pin is enforced like the playwright pin", () => {
+  const base = makeFakeDriver({ name: "playwright-core", version: "1.99.0" });
+  const outDir = makeTemp("e2e-corepin-");
+  const result = runWithBases(["--out-dir", outDir, "--json"], [base]);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout + result.stderr, /pinned|major/i);
+});
+
+function makeFakeDriver({ name = "playwright", version }) {
+  const base = makeTemp("e2e-fakedriver-");
+  const pkgDir = join(base, "node_modules", name);
+  mkdirSync(pkgDir, { recursive: true });
+  writeFileSync(
+    join(pkgDir, "package.json"),
+    JSON.stringify({ name, version, main: "index.js" }),
   );
   writeFileSync(
     join(pkgDir, "index.js"),

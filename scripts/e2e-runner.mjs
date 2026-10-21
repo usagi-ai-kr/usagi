@@ -59,7 +59,7 @@ Options:
   --root <dir>           fixture static root (default: test/fixtures/e2e-runner/public)
   --scenario <id>        scenario to run; only "behavior" exists
   --adapter <name>       auto|playwright|none (default: auto)
-  --browser <name>       requested browser, default chromium
+  --browser <name>       requested browser (only "chromium" is supported)
   --viewport <WxH>       requested viewport, default 1280x720
   --dpr <number>         requested device pixel ratio, default 1
   --locale <tag>         default ko-KR
@@ -143,9 +143,14 @@ function parseArgs(argv) {
       case "--adapter":
         options.adapter = readValue();
         break;
-      case "--browser":
-        options.browser = readValue();
+      case "--browser": {
+        const value = readValue();
+        if (value !== "chromium") {
+          throw new UsageError(`--browser supports only "chromium", got: ${value}`);
+        }
+        options.browser = value;
         break;
+      }
       case "--viewport":
         options.viewport = readViewport(readValue(), "--viewport");
         break;
@@ -996,7 +1001,8 @@ async function main(argv) {
               name: detected.name,
               available: true,
               version: detected.version,
-              baseDir: detected.baseDir,
+              package_dir: detected.package_dir,
+              search_base: detected.search_base,
             };
           }
         }

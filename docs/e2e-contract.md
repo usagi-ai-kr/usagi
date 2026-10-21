@@ -124,10 +124,10 @@ PR마다 도는 스모크 세트와 장시간 시각·교차 브라우저 체크
 
 [e2e-runner.mjs](../scripts/e2e-runner.mjs)는 정적 fixture 서버를 소유·기동하고 단일 브라우저·worker로 behavior 시나리오를 실행한다. 결과 JSON은 §3 계약을 따르고 Phase 1 검증기로 검사한다. 엄격한 결과 JSON에 없는 프로세스·자원 정보는 별도 `<runId>.run-manifest.json`에 둔다. 매니페스트는 검증기 판정까지 담지만, 그 자체는 결과 아티팩트에 해시로 묶지 않고 러너 출력 경로로 참조한다.
 
-- 어댑터: Playwright는 선택 의존이며 설치하지 않는다. 없으면 브라우저 실행을 `unavailable`로 보고하고 성공으로 표시하지 않는다. 명시 요청(`--adapter playwright`)인데 없으면 exit 2다. 드라이버는 `tools/e2e-reference`(고정 버전 선언)와 저장소 루트에서 같은 해석 경로로 찾고, `E2E_RUNNER_RUNTIME_DIRS`를 먼저 본다. 버전 고정은 매니페스트 선언과 메이저 검사를 함께 적용하고, 맞지 않으면 `unavailable`로 보고한다. 브라우저 바이너리가 없으면 실행하지 않고 `unavailable`로 보고한다. `browser_version`은 실제 `browser.version()`이며, 실행 전에는 `unavailable`이다.
+- 어댑터: Playwright는 선택 의존이며 설치하지 않는다. 없으면 브라우저 실행을 `unavailable`로 보고하고 성공으로 표시하지 않는다. 명시 요청(`--adapter playwright`)인데 없으면 exit 2다. 드라이버는 `tools/e2e-reference`(고정 버전 선언)와 저장소 루트에서 같은 해석 경로로 찾고, `E2E_RUNNER_RUNTIME_DIRS`를 먼저 본다. 각 base의 CJS 해석은 `NODE_PATH`·전역 경로도 함께 보므로, 런타임 디렉터리는 운영자 신뢰 경계다(그 안의 모듈이 관측값을 정의한다). 버전 고정은 매니페스트 선언과 메이저 검사를 함께 적용하고, 맞지 않으면 `unavailable`로 보고한다. 브라우저 바이너리가 없으면 실행하지 않고 `unavailable`로 보고한다. `browser_version`은 실제 `browser.version()`이며, 실행 전에는 `unavailable`이다. `--browser`는 `chromium`만 받는다.
 - 소유·결속: 서버는 runner가 직접 bind한 자식 프로세스다. 사전 점검 후 접속하지 않는다. 시작 토큰·PID·주소와 응답 identity(`commit_sha` 포함)를 대조한다. 포트 충돌은 외부 서버에 붙지 않고 `blocked`로 중단한다. runner는 체크아웃 안에서 실행해야 한다.
 - 정리: 성공·예외·timeout·신호 중단에 process tree를 정리하고 잔존을 기록한다. 부모 사망에는 서버의 자가 종료(POSIX, live ppid 대조)에 의존한다. 확실히 살리는 감시자가 없으면 부모 사망 보장을 주장하지 않는다. Windows 정리는 미검증이다.
-- 관측·증거: SHA·viewport/DPR·locale/timezone/theme·font readiness를 기록한다. 요청 조건과 기대 조건이 다르면 실행 전에 exit 2로 거부한다. 실패 시 screenshot·trace·log를 보존하고 재실행 성공으로 덮지 않는다. trace는 내비게이션 전에 시작하고, 실패하면 페이지가 살아 있을 때만 screenshot을 찍는다. 신호 중단 경로는 동기 best-effort로만 기록하고 검증기를 건너뛴다.
+- 관측·증거: SHA·viewport/DPR·locale/timezone/theme·font readiness를 기록한다. 요청 조건과 기대 조건이 다르면 실행 전에 exit 2로 거부한다. 실패 시 screenshot·trace·log를 보존하고 재실행 성공으로 덮지 않는다. trace는 내비게이션 전에 시작하고, 실패하면 페이지가 살아 있을 때만 screenshot을 찍는다. screenshot·trace에는 민감 정보가 담길 수 있고 마스킹하지 않는다. 신호 중단 경로는 동기 best-effort로만 기록하고 검증기를 건너뛴다.
 - 자원: wall time·CPU 시간·peak RSS·잔존 프로세스를 잰다. 값은 runner 자신의 것이며 `scope: "runner"`로 표시한다. 잴 수 없는 값은 0이 아니라 null/`unavailable`로 기록한다. Windows·Alpine은 미검증으로 표시한다.
-- 종료 코드: 검증 통과 + passed면 `0`, 실행됐으나 통과가 아니면 `1`, 실행 전 설정·기동 오류면 `2`, 신호 중단은 `128+n`이다.
+- 종료 코드: 검증 통과 + passed면 `0`, 실행됐으나 통과가 아니면 `1`, 실행 전 설정·기동 오류면 `2`, 신호 중단은 `128+n`이다. 사용법 오류·기동 실패·명시 어댑터 부재는 결과 파일을 남기지 않고 stderr로만 보고한다. 포트 충돌·선언 조건 불일치는 `blocked` 결과를 남기고 exit 2로 끝난다.
 - 브라우저 테스트는 별도 로컬·수동 단계다. core CI에는 브라우저 없는 테스트만 둔다. 로컬에서 외부 읽기 전용 런타임을 쓰는 probe는 저장소 고정 증거가 아니라고 명시한다.

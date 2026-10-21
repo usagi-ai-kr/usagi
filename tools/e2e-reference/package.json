@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Optional isolated runtime manifest for the E2E reference runner. Declares the exact Playwright driver version this reference was validated against. Never installed by CI and never auto-installed: populate this directory locally only (npm install), or rely on a normal root install instead.",
   "dependencies": {
-    "playwright": "1.64.1"
+    "playwright": "1.64.1",
+    "playwright-core": "1.64.1"
   }
 }
