@@ -703,6 +703,21 @@ function checkClientConfigs() {
       fail(".claude/settings.json: permissions must be an object");
     }
     if (settings !== undefined) {
+      const attribution = settings?.attribution;
+      if (typeof attribution !== "object" || attribution === null) {
+        fail(".claude/settings.json: missing attribution");
+      } else {
+        if (attribution.commit !== "") {
+          fail('.claude/settings.json: attribution.commit must be ""');
+        }
+        if (attribution.pr !== "") {
+          fail('.claude/settings.json: attribution.pr must be ""');
+        }
+        if (attribution.sessionUrl !== false) {
+          fail(".claude/settings.json: attribution.sessionUrl must be false");
+        }
+      }
+
       const preToolUse = settings?.hooks?.PreToolUse;
       if (!Array.isArray(preToolUse) || preToolUse.length === 0) {
         fail(".claude/settings.json: missing hooks.PreToolUse");
