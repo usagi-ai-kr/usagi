@@ -32,6 +32,7 @@ audience: usagi를 운용하는 에이전트
 - opencode와 Claude Code에는 최소 레포지터리 설정만 있습니다.
 - Claude Code는 `.claude/skills/`에서만 프로젝트 스킬을 찾습니다. `.claude/skills`는 `../.agents/skills`를 가리키는 심볼릭 링크라서 원본이 하나로 유지됩니다. `CLAUDE.md` → `AGENTS.md`와 같은 방식입니다.
 - Claude Code는 `description`을 보고 스킬 자동 호출 여부를 정합니다. 모든 스킬 `description`에 `Use when ...` 조건을 넣습니다.
+- Claude Code 설정은 `attribution.commit`·`pr`을 비우고 `sessionUrl`을 끕니다.
 - Antigravity CLI와 Codex는 문서로만 지원합니다. fallback을 씁니다.
 - plugin 패키징은 아직 없습니다. hook 실행은 Claude Code PreToolUse 어댑터뿐입니다. 검증 전 코드를 먼저 돌리지 않습니다.
 

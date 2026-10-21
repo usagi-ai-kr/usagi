@@ -4,6 +4,10 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Changed
+
+- Claude Code project settings disable commit, PR and session-link attribution by default.
+
 ### Removed
 
 - Removed the Harness starter guide and templates; README now carries one short start prompt.
