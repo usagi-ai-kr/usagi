@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import net from "node:net";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, existsSync, readFileSync, realpathSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
 import { tmpdir, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -377,6 +377,7 @@ test("non-chromium --browser is rejected before starting", () => {
   const result = runRunner(["--out-dir", outDir, "--browser", "firefox"]);
   assert.equal(result.status, 2);
   assert.match(result.stderr, /chromium/);
+  assert.equal(existsSync(join(outDir, "result.json")), false);
 });
 
 test("explicit playwright request fails closed when no driver resolves", async (t) => {
@@ -392,6 +393,7 @@ test("explicit playwright request fails closed when no driver resolves", async (
   const result = runWithBases(["--out-dir", outDir, "--adapter", "playwright"], [emptyBase]);
   assert.equal(result.status, 2);
   assert.match(result.stderr, /playwright/i);
+  assert.equal(existsSync(join(outDir, "result.json")), false);
 });
 
 test("explicit playwright request pins the version deterministically", () => {
@@ -400,13 +402,6 @@ test("explicit playwright request pins the version deterministically", () => {
   const result = runWithBases(["--out-dir", outDir, "--adapter", "playwright"], [base]);
   assert.equal(result.status, 2);
   assert.match(result.stderr, /pinned|major/i);
-});
-
-test("non-chromium --browser is rejected before starting", () => {
-  const outDir = makeTemp("e2e-browserflag-");
-  const result = runRunner(["--out-dir", outDir, "--browser", "firefox"]);
-  assert.equal(result.status, 2);
-  assert.match(result.stderr, /chromium/);
 });
 
 test("package_dir records the resolved package, not the search base", () => {
