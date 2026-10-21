@@ -7,6 +7,7 @@ All notable changes to this project are documented here. This project follows [S
 ### Changed
 
 - Claude Code project settings disable commit, PR and session-link attribution by default.
+- Claude Code project permissions allow `gh pr merge` for the merge workflow.
 
 ### Removed
 
