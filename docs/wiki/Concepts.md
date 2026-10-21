@@ -39,6 +39,10 @@ TDD는 실패하는 테스트를 먼저 쓰고, 통과하는 가장 작은 변�
 
 BDD의 Given/When/Then은 수락 기준을 적는 데 유용하지만, 모든 테스트에 강제하지 않습니다. 검증 증거는 명령·결과를 커밋 SHA에 묶습니다. 자세한 증거 규칙은 [위임·증거 문서](https://github.com/usagi-ai-kr/usagi/blob/main/docs/delegation-handoff-evidence.md)를 참고하세요.
 
+## E2E와 실행 증거
+
+E2E 결과는 대상 commit SHA, 고정 viewport/DPR, artifact hash에 묶습니다. Reference runner는 fixture 서버를 직접 소유하고, 브라우저가 없으면 `passed`를 만들지 않습니다. 실패하면 trace·screenshot·log를 보존하고, 재실행 성공으로 실패를 덮지 않습니다. 자세한 계약은 [E2E 결과 계약](https://github.com/usagi-ai-kr/usagi/blob/main/docs/e2e-contract.md)을 참고하세요.
+
 ## 레이어와 의존 방향
 
 네 가지 논리 책임으로 나눕니다. UI(화면), App(유스케이스·조정), Domain(업무 규칙·불변식), Infra(영속성·외부 어댑터)입니다.

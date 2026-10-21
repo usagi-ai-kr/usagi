@@ -15,7 +15,7 @@
 
 ## 현재 버전
 
-`v0.2.0` (2026-10-20) — 구조·실행 환경·E2E·디자인·문서 검토·시각화 계약을 담았습니다. opencode·Claude Code 클라이언트 설정과 통합 가이드를 더했습니다. 모델별 운용 기록 위키에 역할 적합성 안내도 넣었습니다. 자세한 내용은 [Changelog](CHANGELOG.md)를 참고하세요.
+`v0.3.0` (2026-10-21) — E2E reference runner, config 기반 test gate, requirement traceability, Mermaid static gate, Claude Code 검증 훅, command runner 환경 allowlist를 더했습니다. 실행 증거와 fail-closed 검증을 강화했습니다. 자세한 내용은 [Changelog](CHANGELOG.md)를 참고하세요.
 
 ## 운영 범위
 
