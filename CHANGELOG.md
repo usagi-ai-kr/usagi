@@ -5,6 +5,9 @@ All notable changes to this project are documented here. This project follows [S
 ## [Unreleased]
 
 ### Changed
+- 모델 운용 위키에 2026-10-21 회고 및 합성 루브릭의 해석 한계를 추가합니다.
+
+### Changed
 
 - Claude Code project settings disable commit, PR and session-link attribution by default.
 - Claude Code project permissions allow `gh pr merge` for the merge workflow.
